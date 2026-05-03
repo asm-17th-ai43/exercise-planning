@@ -8,10 +8,16 @@
 
 ```
 docs/
-├── planning/   # 분담·일정·킥오프
+├── planning/   # 분담·일정·킥오프·사람별 플랜
 │   ├── plan.md                 ★ 분담 원본 (5/4 합의)
 │   ├── dev_plan.md             일자별 카드 (5/4~5/10)
-│   └── 킥오프_5월4일.md          5/4 킥오프 어젠다
+│   ├── 킥오프_5월4일.md          5/4 킥오프 어젠다
+│   └── people/                 사람별 맞춤 플랜
+│       ├── A_노준영.md         (Flutter Web 프론트)
+│       ├── B_박장우.md         (Chat UI + 프로토콜)
+│       ├── C_이유준.md         (LangGraph Agent)
+│       ├── D_박영준.md         (CRUD Tool + 시나리오)
+│       └── E_신승민.md         (CRUD Tool + 시나리오)
 ├── spec/       # 기능·제품 스펙
 │   ├── feature_spec.md         F1~F7 사용자 행동·수용 기준
 │   └── 프로젝트 기획서 양식_*.md   소마톤 제출 원본 기획서 (불변)
@@ -24,8 +30,9 @@ docs/
 
 | 상황 | 문서 |
 |---|---|
+| "**내가** 오늘/내일 뭐 해야 하지?" | `docs/planning/people/<나>.md` ← 가장 먼저 |
 | "내 담당이 뭐였지?" | `docs/planning/plan.md` (원본) → 루트 `CLAUDE.md` 1번 표 |
-| "오늘/내일 뭐 해야 하지?" | `docs/planning/dev_plan.md` 일자별 카드 |
+| "전체 일정 카드는?" | `docs/planning/dev_plan.md` |
 | "5/4 킥오프에서 정한 게 뭐였지?" | `docs/planning/킥오프_5월4일.md` |
 | "F4가 뭘 보여주기로 했지?" | `docs/spec/feature_spec.md` |
 | "기획서 원안이 뭐였지?" | `docs/spec/프로젝트 기획서 양식_*.md` |

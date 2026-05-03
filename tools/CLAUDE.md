@@ -5,7 +5,7 @@
 
 ## 원칙
 
-> 유저가 FE에서 보는 모든 데이터는 agent도 그대로 본다. (plan.md)
+> 유저가 FE에서 보는 모든 데이터는 agent도 그대로 본다. (`docs/planning/plan.md`)
 
 → A의 화면에 뜨는 모든 항목에는 read+write Tool이 모두 노출되어야 함.
 → FastAPI 라우터(`backend/api/data.py`)는 이 Tool들에 얇게 위임.
@@ -52,7 +52,7 @@ def calendar_tool(start: str, end: str) -> list[dict]:
 
 ## 시나리오·프롬프트 튜닝 (D/E 추가 책임)
 
-plan.md D/E 항목의 추가 책임:
+`docs/planning/plan.md` D/E 항목의 추가 책임:
 - **유저 시나리오 정의** (3~5개) — `data/scenarios/*.json`에 입력 데이터 + 기대 응답 적재
 - **테스트 데이터** — `data/scenarios/`로 격리. 기본 `data/*.json`은 데모 페르소나용.
 - **프롬프트 깎기** — 시나리오가 잘 동작하도록 `agent/prompts.py` 튜닝 (C와 협업)

@@ -3,7 +3,7 @@
 > 5인 팀 공유 컨텍스트. 이 파일 수정은 데일리 싱크 합의 후 PR로만.
 > **각 디렉토리에 자체 `CLAUDE.md`가 있음** — 슬라이스별 디테일은 거기에서 본다.
 
-**한 줄 정의**: 캘린더·건강·운동기록을 종합해 이번 주 맞춤 운동 스케줄을 자동 생성·재조정하는 LangGraph Agent + Flutter Web UI. 상세 기획은 `프로젝트 기획서 양식_43조_맞춤형 운동 스케줄링 에이전트.md`, 분담 합의는 `plan.md` 참조.
+**한 줄 정의**: 캘린더·건강·운동기록을 종합해 이번 주 맞춤 운동 스케줄을 자동 생성·재조정하는 LangGraph Agent + Flutter Web UI. 상세 기획·분담·일정은 [`docs/`](docs/CLAUDE.md) 참조 (분담 원본은 `docs/planning/plan.md`).
 
 ## 1. 팀 & 담당 슬라이스 (역할 분담)
 
@@ -17,7 +17,7 @@
 
 **Tech Lead**: C(이유준) 또는 D(박영준) — 매일 저녁 main 동작 확인 + 통합 책임. 5/4 데일리 싱크에서 확정.
 
-**원칙**(plan.md 직역): "유저가 FE에서 보는 모든 데이터는 agent도 그대로 본다." → A의 화면에 뜨는 모든 항목에는 D/E가 read+write Tool을 노출.
+**원칙**(`docs/planning/plan.md` 직역): "유저가 FE에서 보는 모든 데이터는 agent도 그대로 본다." → A의 화면에 뜨는 모든 항목에는 D/E가 read+write Tool을 노출.
 
 ## 2. 기술 스택
 
@@ -42,7 +42,11 @@ AI_TECH_EDU/
 │   └── scenarios/
 ├── schemas/     # 전원 공유 (Pydantic 모델)   → schemas/CLAUDE.md
 ├── tests/       # 스모크/단위/KPI            → tests/CLAUDE.md
-└── plan.md  킥오프_5월4일.md  dev_plan.md  feature_spec.md  flow.html  requirements.txt  .env.example
+├── docs/        # 분담·일정·스펙·디자인       → docs/CLAUDE.md
+│   ├── planning/  (plan.md, dev_plan.md, 킥오프_5월4일.md)
+│   ├── spec/      (feature_spec.md, 프로젝트 기획서 양식_*.md)
+│   └── design/    (flow.html, 메인 화면 PNG)
+└── requirements.txt  .env.example
 ```
 
 작업 시작 전 자기 슬라이스 디렉토리의 `CLAUDE.md`를 먼저 읽기.

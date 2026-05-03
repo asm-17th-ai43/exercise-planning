@@ -1,5 +1,6 @@
 """공통 데이터 모델. 변경은 데일리 싱크 합의 후에만."""
 from datetime import date, datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -49,3 +50,18 @@ class AgentResponse(BaseModel):
     message: str
     proposal: ScheduleProposal | None = None
     needs_approval: bool = False
+
+
+# ---------- API 요청/응답 모델 (FastAPI 게이트웨이 ↔ Flutter Web) ----------
+
+class ChatRequest(BaseModel):
+    message: str
+    thread_id: str | None = None
+
+
+class ChatChunk(BaseModel):
+    """SSE 스트림 청크. type별 payload 스키마는 schemas/CLAUDE.md 참고."""
+
+    type: Literal["text", "tool_call", "proposal", "done", "error"]
+    payload: dict[str, Any]
+

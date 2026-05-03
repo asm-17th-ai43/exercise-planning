@@ -4,19 +4,38 @@
 
 ## 역할
 
-5개 슬라이스의 **인터페이스 계약**. 모든 모듈은 자기 디렉토리에서 `from schemas import ...`로 import한다. 이 파일이 바뀌면 전원의 코드가 영향받으므로 단독 결정 금지.
+5개 슬라이스(A~E)의 **인터페이스 계약**. 모든 모듈은 `from schemas.models import ...`로 import한다. 이 파일이 바뀌면 전원의 코드가 영향받으므로 단독 결정 금지.
 
 ## 모델 (Pydantic v2)
 
+### 도메인 모델
+
 | 모델 | 용도 | 생성/소비 |
 |---|---|---|
-| `CalendarEvent` | 사용자 일정 1건 | `tools.get_calendar` → Agent |
-| `HealthSnapshot` | 1일치 수면·활동량·HR | `tools.get_health` → Agent |
-| `WorkoutRecord` | 과거 운동 1건 | `tools.get_workouts` → Agent |
-| `WorkoutSlot` | 추천 운동 1건 | Agent → UI |
-| `MuscleFatigueState` | 1일치 부위별 피로도 | Agent → `visuals.render_fatigue` |
-| `ScheduleProposal` | 슬롯 + 피로도 타임라인 묶음 | Agent → UI |
-| `AgentResponse` | 챗 응답 + 제안 + 승인 필요 여부 | `run_agent` → Streamlit |
+| `CalendarEvent` | 사용자 일정 1건 | `tools.get_calendar` → Agent / FE 카드 |
+| `HealthSnapshot` | 1일치 수면·활동량·HR | `tools.get_health` → Agent / FE 카드 |
+| `WorkoutRecord` | 과거 운동 1건 | `tools.get_workouts` → Agent / FE 카드 |
+| `WorkoutSlot` | 추천 운동 1건 | Agent → FE |
+| `MuscleFatigueState` | 1일치 부위별 피로도 | Agent → FE 레이더 차트 |
+| `ScheduleProposal` | 슬롯 + 피로도 타임라인 묶음 | Agent → FE |
+| `AgentResponse` | (비스트림) 챗 응답 + 제안 | 테스트·단순 호출용 |
+
+### API 모델 (FastAPI ↔ Flutter Web)
+
+| 모델 | 용도 |
+|---|---|
+| `ChatRequest` | `POST /agent/chat` 요청 본문 |
+| `ChatChunk` | `POST /agent/chat` SSE 스트림 청크 1개 |
+
+`ChatChunk.type`별 `payload` 스키마 (B/C 합의 — 필요 시 데일리 싱크에서 갱신):
+
+| type | payload |
+|---|---|
+| `text` | `{ "delta": "응답 토큰 일부" }` |
+| `tool_call` | `{ "name": "get_calendar", "args": { ... } }` |
+| `proposal` | `ScheduleProposal.model_dump(mode="json")` |
+| `done` | `{ "thread_id": "..." }` |
+| `error` | `{ "message": "..." }` |
 
 ## 변경 절차
 
@@ -29,4 +48,5 @@
 - `Field(ge=, le=)`로 범위 제약을 모델에 박아두기 — 호출 측에서 검증 안 해도 됨
 - `int | None = None`처럼 PEP 604 union 사용 (Python 3.11+)
 - 새 필드는 **기본값 있는 옵셔널**로 추가하면 호환성 유지에 좋음
-- 직렬화 출력은 `model.model_dump(mode="json")` 사용 (Streamlit `st.json` 호환)
+- 직렬화 출력은 `model.model_dump(mode="json")` 사용 (Flutter Web의 JSON 디코더 호환)
+- API 모델(요청/응답·SSE 청크)도 여기에 정의. backend/api/ 라우터는 import만.

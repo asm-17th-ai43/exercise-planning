@@ -1,6 +1,6 @@
 # memory/ — LangGraph 체크포인터
 
-> **담당**: #4 추론·프롬프트·메모리 슬라이스
+> **담당**: C(이유준). agent/와 함께.
 
 ## 역할
 
@@ -15,7 +15,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 checkpointer = InMemorySaver()
 ```
 
-- 프로세스 메모리에만 저장. Streamlit 재시작 시 초기화.
+- 프로세스 메모리에만 저장. FastAPI 재시작 시 초기화.
 - 개발/데모엔 충분.
 
 ### 2차 — SqliteSaver (시간 남으면)
@@ -30,7 +30,7 @@ checkpointer = SqliteSaver.from_conn_string("memory.sqlite")
 
 ## thread_id
 
-Streamlit 세션마다 고유한 `thread_id`를 부여. `app/main.py`에서 `st.session_state`에 저장하여 재호출 시 같은 값 사용 (이미 `app/CLAUDE.md`에 패턴 있음).
+FE(B의 채팅 위젯)가 세션마다 고유한 `thread_id`를 만들어 `POST /agent/chat`에 매번 같이 보냄. backend/api/chat.py가 `run_agent_stream(user_input, thread_id)`로 그대로 위임.
 
 ## 작업 시 주의
 

@@ -1,42 +1,48 @@
-# D — 박영준 (CRUD Tool + 시나리오 + 프롬프트 튜닝)
+# D — 박영준 (CRUD calendar + workouts + Tech Lead)
 
 ## 한 줄 책임
 
-CRUD Tool 작성 + 데모 시나리오 정의 + 테스트 데이터 + 프롬프트 튜닝 (E와 도메인 분담).
+calendar + workouts CRUD Tool 8개 + FastAPI 라우터 위임. **Tech Lead** — 매일 EOD에 main 동작 점검.
 
-> E와 **도메인 분담은 5/4 데일리 싱크에서** 확정. 권장: D=calendar/workouts, E=health/scenarios.
+> 도메인 분담 확정: **D = calendar + workouts**, E = health + scenarios 5개 + 프롬프트 튜닝 주도.
 
-## 주 디렉토리·파일 (권장 분담 기준)
+## 주 디렉토리·파일
 
-- `tools/data_tools.py` — `get_/create_/update_/delete_calendar_event`, `_workout` (도메인 분담분)
+- `tools/data_tools.py` — `get_/create_/update_/delete_calendar_event` + `_workout` (CRUD 8개)
 - `data/calendar.json`, `data/workouts.json` — 데모 페르소나 데이터
-- `data/scenarios/*.json` — KPI 시나리오 (E와 공동 적재)
-- `agent/prompts.py` 튜닝 — C와 협업
 - `backend/api/data.py` — 자기 도메인 라우터(현재 501 stub)에 위임 채우기
+- (Tech Lead 부수업) main 일일 점검, 통합 디버깅 보조
 
-## 합의 책임 (5/4 락)
+## 합의 (이미 락)
 
-- **C와**: Tool 시그니처 (LangGraph `@tool`로 래핑할 형태). schemas/models.py와 1:1
-- **E와**: calendar/health/workouts 도메인 분담 결정
-- **A와**: `/data/*` REST 응답 형태 (= Tool 반환값 그대로)
+- **C와**: Tool 시그니처 — `tools/CLAUDE.md`에 박힘. schemas/models.py와 1:1.
+- **A와**: `/data/*` REST 응답 = Tool 반환값 그대로 (Pydantic 모델).
+- 변경 필요 시: `[interface-change]` PR + 5명 react.
 
-## 일자별 to-do (권장 분담 기준)
+## 일자별 to-do
 
 | 날짜 | 할 일 | 합격 기준 |
 |---|---|---|
-| **5/4 (월)** | `data/calendar.json` 더미 5건 / `tools.get_calendar` 1차 구현 (JSON 파싱) | `pytest`에서 1주 범위 호출 시 비어있지 않은 리스트 |
-| **5/5 (화)** | `get_calendar` JSON 실파싱 완성 / CRUD 중 첫 write 함수 (`create_calendar_event`) | `POST /data/calendar`로 새 이벤트 추가됨 |
-| **5/6 (수)** | `update_/delete_calendar_event` 일부 구현 / 1주치 더미 데이터 보강 (충돌·빈시간 케이스) | 4종 CRUD 모두 200/204 응답 |
-| **5/7 (목)** | `data/scenarios/`에 KPI 1·3 시나리오(빈시간 0, 일정 꽉 참) 적재 | `data/scenarios/full_week.json` 등 파일 존재 |
-| **5/8 (금)** ★ | write Tool 안정화 (atomic 파일 갱신: 임시 파일 → rename) / B의 F7 호출 검증 | 등록 버튼 클릭 시 `calendar.json` 무손실 갱신 |
-| **5/9 (토)** | 시나리오 입력 vs 기대 응답 매칭 정밀화 / 프롬프트 튜닝 (C와) | `pytest -m kpi` 1·3·5번 통과 |
-| **5/10 (일)** | 데모용 calendar/workouts 데이터 최종 점검 | 데모 시연 무사고 |
+| **5/4 (월)** | `data/calendar.json` 더미 5건 + `tools.get_calendar` JSON 파싱 1차 / **(Tech Lead)** 5명 PR 머지 상태 EOD 점검 | `pytest`에서 1주 범위 호출 시 리스트 반환 |
+| **5/5 (화)** | `get_calendar` 완성 + `tools.get_workouts` JSON 파싱 + `create_calendar_event` write 1개 / Swagger `/docs`에서 GET 1개 200 검증 | `POST /data/calendar`로 새 이벤트 추가 |
+| **5/6 (수)** | `update_/delete_calendar_event` + `_workout` CRUD 일부 / 1주치 더미 데이터 보강 (충돌·빈시간 케이스) | calendar/workouts 모두 4종 CRUD 200/204 |
+| **5/7 (목)** | calendar/workouts CRUD 마무리 / Tech Lead — A·B·C·E 슬라이스 진행률 점검 (PR 리뷰 밀린 것 핑) | 본인 8 CRUD 모두 동작 / 팀 PR 정체 0 |
+| **5/8 (금)** ★ | write Tool atomic 파일 갱신 (임시 파일 → `os.replace`) / B의 F7 호출 검증 / Tech Lead — 통합 디버깅 보조 | 등록 버튼 → `calendar.json` 무손실 갱신, end-to-end 1회 성공 |
+| **5/9 (토)** | KPI 1·3 시나리오 매칭 코드 (`pytest -m kpi`) — E와 분담 / 프롬프트 튜닝 보조 | `pytest -m kpi` 1·3번 통과 |
+| **5/10 (일)** | 데모용 calendar/workouts 데이터 최종 점검 / Tech Lead — `git tag v1.0-demo` push | 데모 시연 무사고 |
 
 ## KPI 시나리오 — 본인 영향
 
-- **1번** 일정 충돌 — calendar 데이터 품질이 핵심
-- **3번** 빈 시간 0 주 — `data/scenarios/full_week.json` 적재
+- **1번** 일정 충돌 — calendar 데이터 품질 + 시나리오 매칭 코드 (E와 분담)
+- **3번** 빈 시간 0 주 — calendar 시나리오 데이터 + 매칭 코드
 - **연속 부위** workouts 데이터 (피로도 누적 검증용)
+
+## Tech Lead 책임
+
+- 매일 EOD에 `git pull && uvicorn backend.main:app --reload && pytest`로 main 동작 점검
+- 팀 PR 정체 시 팀 채널에 핑 (영업시간 기준 4시간 넘으면)
+- 5/8 통합일 디버깅 보조 (FastAPI ↔ Agent ↔ Tool 흐름 점검)
+- 5/10 `git tag v1.0-demo` 생성 + push
 
 ## 자주 볼 문서·CLAUDE.md
 
@@ -51,5 +57,6 @@ CRUD Tool 작성 + 데모 시나리오 정의 + 테스트 데이터 + 프롬프�
 - `tools/data_tools.py`는 E와 같이 만짐 → **함수 단위 PR**로 쪼갬 (PR 제목에 `[tools] create_calendar_event 구현`)
 - write는 read-modify-write — 동시성 걱정 없지만 atomic하게 (임시 파일 → `os.replace`)
 - 한국어 키워드(부위명, title) escape 금지 — JSON 한글 그대로
-- 새 필드 추가는 `schemas/models.py` 먼저 수정 후 JSON 갱신
+- 새 필드 추가는 `[interface-change]` PR (`schemas/models.py` 먼저 수정 + 5명 react)
 - "유저가 FE에서 보는 모든 데이터는 agent도 본다" — A 화면에 새 필드 추가하려면 D/E도 Tool 추가 필수
+- Tech Lead 점검 부담 = 매일 ~10분이면 충분. 무거운 코드 작업 시간 잡아먹지 말 것

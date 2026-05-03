@@ -1,6 +1,6 @@
 # data/ — 가상 데이터 (JSON)
 
-> **담당**: D(박영준) + E(신승민). 도메인 분담은 데일리 싱크에서.
+> **담당**: D(박영준) — `calendar.json`, `workouts.json`. E(신승민) — `health.json`, `scenarios/` 5개 적재 주도.
 
 실제 Google Calendar / Apple Health 연동은 **MVP 범위 외**. 모든 데이터는 여기 JSON에서만 읽고 쓴다. (DB 도입은 데모 이후 검토 — schemas/models.py가 사실상 DB 스키마.)
 

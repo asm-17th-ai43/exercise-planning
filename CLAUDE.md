@@ -1,21 +1,21 @@
 # 43조 — 맞춤형 운동 스케줄링 에이전트
 
-> 5인 팀 공유 컨텍스트. 이 파일 수정은 데일리 싱크 합의 후 PR로만.
+> 5인 팀 공유 컨텍스트. 이 파일 수정은 PR로만 (인터페이스/구조 변경은 5명 모두 react 후 머지).
 > **각 디렉토리에 자체 `CLAUDE.md`가 있음** — 슬라이스별 디테일은 거기에서 본다.
 
 **한 줄 정의**: 캘린더·건강·운동기록을 종합해 이번 주 맞춤 운동 스케줄을 자동 생성·재조정하는 LangGraph Agent + Flutter Web UI. 상세 기획·분담·일정은 [`docs/`](docs/CLAUDE.md) 참조 (분담 원본은 `docs/planning/plan.md`).
 
-## 1. 팀 & 담당 슬라이스 (역할 분담)
+## 1. 팀 & 담당 슬라이스 (역할 분담 — 확정)
 
 | # | 슬라이스 | 담당 | 디렉토리·책임 |
 |---|---|---|---|
-| **A** | Flutter Web 프론트 (대시보드) | **노준영** | `frontend/` 전체. 좌측 카드 3종(일정/컨디션/최근 운동) + 가운데 부위별 피로도 레이더. BE와 `/data/*` REST 합의. |
-| **B** | Chat UI + Agent 통신 프로토콜 | **박장우** | `frontend/lib/chat/` (FE 채팅, SSE 클라이언트, 디자인) + `backend/api/chat.py` 스펙 합의 (C와). Stream 구현. |
-| **C** | LangGraph Agent (prompt + graph + memory) | **이유준** | `agent/`, `memory/`. `run_agent_stream` 진입점, FE 규격에 맞춘 SSE 청크 emit. |
-| **D** | CRUD Tool + 시나리오·프롬프트 튜닝 | **박영준** | `tools/`, `data/` (도메인 분담은 데일리 싱크에서 E와) |
-| **E** | CRUD Tool + 시나리오·프롬프트 튜닝 | **신승민** | `tools/`, `data/` (D와 동일 책임 영역) |
+| **A** | Flutter Web 프론트 (대시보드) | **노준영** | `frontend/` 전체. 좌측 카드 3종(일정/컨디션/최근 운동) + 가운데 부위별 피로도 레이더. BE의 `/data/*` REST 호출. |
+| **B** | Chat UI + Agent 통신 프로토콜 | **박장우** | `frontend/lib/chat/` (FE 채팅, SSE 클라이언트, 디자인) + `backend/api/chat.py` 스펙 (C와 공동). Stream 구현. |
+| **C** | LangGraph Agent (prompt + graph + memory) | **이유준** | `agent/`, `memory/`. `run_agent_stream` 진입점, SSE 청크 emit. |
+| **D** | CRUD Tool (calendar + workouts) + Tech Lead | **박영준** | `tools/data_tools.py` (calendar·workouts CRUD 8개) + `data/calendar.json`·`workouts.json` + `backend/api/data.py` 위임 |
+| **E** | CRUD Tool (health) + 시나리오 + 프롬프트 튜닝 | **신승민** | `tools/data_tools.py` (health CRUD 4개) + `data/health.json` + `data/scenarios/` 5개 적재 주도 + `agent/prompts.py` 튜닝 (C와) |
 
-**Tech Lead**: C(이유준) 또는 D(박영준) — 매일 저녁 main 동작 확인 + 통합 책임. 5/4 데일리 싱크에서 확정.
+**Tech Lead**: **D 박영준** — 매일 저녁 main 동작 확인 + Flutter↔FastAPI 통합 책임. CRUD가 패턴 반복이라 후반 여유가 있고, FE/Agent 사이 데이터 흐름의 진실을 가장 잘 봄.
 
 **원칙**(`docs/planning/plan.md` 직역): "유저가 FE에서 보는 모든 데이터는 agent도 그대로 본다." → A의 화면에 뜨는 모든 항목에는 D/E가 read+write Tool을 노출.
 
@@ -25,7 +25,7 @@
 - **Frontend**: Flutter Web (Dart)
 - **Datastore**: 로컬 JSON (`data/*.json`). 실제 Google Calendar/Apple Health API 미연동. `schemas/models.py`가 사실상 DB 스키마.
 - **Agent 메모리**: LangGraph 체크포인터 (in-memory → 필요 시 SQLite)
-- **의존성**: Python은 `requirements.txt`, Flutter는 `frontend/pubspec.yaml`. 추가 시 데일리 싱크 공지.
+- **의존성**: Python은 `requirements.txt`, Flutter는 `frontend/pubspec.yaml`. 추가 시 팀 채널 공지 + PR 설명에 명시.
 
 ## 3. 레포 구조
 
@@ -76,13 +76,13 @@ POST   /agent/chat   (SSE)             -> stream of ChatChunk
 GET    /health                          -> ping
 ```
 
-위 시그니처는 **5/4 킥오프에서 락**. 변경 절차는 `schemas/CLAUDE.md` 참고.
+위 시그니처는 **이미 락**. 변경 절차는 `schemas/CLAUDE.md` 참고.
 
 ## 5. 협업 규칙
 
-- **Git**: `main` 보호, 브랜치 `feat/<A~E>-<짧은설명>`, PR은 함수/엔드포인트 단위로 작게, 리뷰어 1명 이상 승인 후 머지(셀프 머지 금지). 같은 파일(`tools/data_tools.py`, `backend/api/data.py`)을 여럿이 만질 땐 싱크에서 머지 순서 정함.
+- **Git**: `main` 보호, 브랜치 `feat/<A~E>-<짧은설명>`, PR은 함수/엔드포인트 단위로 작게, 리뷰어 1명 이상 승인 후 머지(셀프 머지 금지). 같은 파일(`tools/data_tools.py`, `backend/api/data.py`)을 여럿이 만질 땐 PR 코멘트로 머지 순서 합의.
 - **Mock-first**: 데이터/타 슬라이스 함수가 없어도 `schemas/` 더미와 `NotImplementedError` / `501` stub으로 작업 시작. 실제 LLM 호출은 5/8 통합 전까지 stub 가능.
-- **데일리 15분 싱크**: 어제/오늘/막힌 것. 인터페이스 변경 논의는 이 자리에서만.
+- **합의 메커니즘 (회의 없음)**: 일상 작업은 본인 판단으로 진행. **인터페이스 변경**(`schemas/models.py`·Tool 시그·REST·SSE 청크)이 필요하면 PR 제목에 `[interface-change]` 태그 + 5명 모두 react 후 머지. 막힌 게 있으면 GitHub Issue 또는 팀 채널.
 - **시크릿**: `.env` 절대 커밋 금지(`.gitignore` 등록), 새 변수는 `.env.example`에 키만 추가.
 
 ## 6. 코딩 컨벤션

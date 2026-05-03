@@ -1,4 +1,4 @@
-"""공통 데이터 모델. 변경은 데일리 싱크 합의 후에만."""
+"""공통 데이터 모델. 변경은 [interface-change] PR + 5명 react 후에만."""
 from datetime import date, datetime
 from typing import Any, Literal
 

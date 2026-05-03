@@ -10,10 +10,10 @@ Flutter Web 채팅 UI(SSE 스트림) + Agent 통신 프로토콜 정의. 메시�
 - `backend/api/chat.py` — 스펙 합의(C와). 라우터는 C가 채움
 - `schemas/models.py` — `ChatRequest`, `ChatChunk` 스키마 (C와 공동)
 
-## 합의 책임 (5/4 락)
+## 합의 (이미 락)
 
-- **C와**: `ChatChunk.type` 5종(text/tool_call/proposal/done/error)별 payload 키 합의 → `schemas/CLAUDE.md` 표 갱신
-- **A와**: 채팅 위젯이 차지하는 우측 폭/위치, 등록 버튼 노출 조건
+- **C와**: `ChatChunk.type` 5종(text/tool_call/proposal/done/error)별 payload 키 — `schemas/CLAUDE.md` 표에 박힘. 변경 시 `[interface-change]` PR.
+- **A와**: 채팅 위젯이 차지하는 우측 폭/위치, 등록 버튼 노출 조건은 디자인 PR 코멘트로.
 
 ## 일자별 to-do
 

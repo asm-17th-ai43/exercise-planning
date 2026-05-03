@@ -12,10 +12,10 @@ Flutter Web 대시보드 — 좌측 카드 3종(일정/컨디션/최근 운동) 
 - `frontend/lib/api/` — REST 클라이언트 (`/data/*`)
 - `frontend/test/` — Dart 단위 테스트
 
-## 합의 책임 (5/4 락)
+## 합의 (이미 락)
 
-- **D/E와**: `/data/calendar`, `/data/health`, `/data/workouts` REST 응답 형태. 시그니처는 `schemas/models.py` Pydantic 모델 그대로.
-- **B와**: `frontend/` 디렉토리 컨벤션 (B는 `lib/chat/` 안에서 작업, A는 그 외). 레이아웃 셸이 채팅 영역에 어떤 폭/위치를 줄지.
+- **D/E와**: `/data/calendar`, `/data/health`, `/data/workouts` REST 응답 = `schemas/models.py` Pydantic 모델 그대로. **변경 시 `[interface-change]` PR + 5명 react**.
+- **B와**: `frontend/` 디렉토리 컨벤션 — B는 `lib/chat/` 안에서 작업, A는 그 외. 레이아웃 셸이 채팅 영역에 어떤 폭/위치를 줄지는 디자인 PR 코멘트로 합의.
 
 ## 일자별 to-do
 

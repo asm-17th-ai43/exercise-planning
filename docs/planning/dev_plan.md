@@ -10,7 +10,7 @@
 
 ---
 
-## 1. 5명 분배 (A~E 역할 분담, plan.md)
+## 1. 5명 분배 (A~E 역할 분담, 확정)
 
 원칙: 백엔드/프론트엔드 비대칭 없이, 기능 영역별로 풀스택 책임을 분리. "유저가 FE에서 보는 모든 데이터는 agent도 그대로 본다."
 
@@ -19,30 +19,35 @@
 | **A** | Flutter Web 프론트 (대시보드 — 좌측 카드 3종 + 가운데 레이더) | F1, F2, F3, F5 | **노준영** |
 | **B** | Chat UI + Agent 통신 프로토콜 (SSE stream) | F4·F6의 FE 측, F7 | **박장우** |
 | **C** | LangGraph Agent (prompt + graph + memory) | F4·F6의 BE 측 | **이유준** |
-| **D** | CRUD Tool + 시나리오 + 프롬프트 튜닝 | F1·F2·F3·F4·F7의 데이터 측 (D-E 분담) | **박영준** |
-| **E** | CRUD Tool + 시나리오 + 프롬프트 튜닝 | D와 동일 (도메인 분담) | **신승민** |
+| **D** | CRUD Tool (calendar + workouts) + Tech Lead | F1·F3·F7의 데이터 측 + 통합 책임 | **박영준** |
+| **E** | CRUD Tool (health) + scenarios 5개 적재 + 프롬프트 튜닝 주도 | F2의 데이터 측 + KPI 시나리오 운영 | **신승민** |
 
-**Tech Lead** (C 또는 D)는 매일 저녁 main 동작 확인 + Flutter↔FastAPI 통합 책임. 5/4 데일리 싱크에서 확정.
+**Tech Lead = D 박영준** (확정). 매일 저녁 main 동작 확인 + Flutter↔FastAPI 통합 책임. CRUD가 패턴 반복이라 후반 여유 있고, FE/Agent 사이 데이터 흐름의 진실을 가장 잘 봄.
 
-### 인접 협업
+**작업량 균형**:
+- D는 CRUD 양 많음(8개) + Tech Lead — 패턴 반복이라 빠르고, 통합 점검은 짧은 시간
+- E는 CRUD 적음(4개) + 시나리오 5개 + 프롬프트 튜닝 — 데이터/문서 작업 비중 큼
+- C는 LangGraph 핵심만 — 시나리오 케이스/튜닝은 E가 주도, KPI 자동화 시나리오 매칭은 D/E가 짜고 C는 그래프 검증만
+
+### 인접 협업 (이미 락 완료)
 
 - **A ↔ B**: 같은 Flutter 앱. A는 `lib/cards/`, `lib/api/`. B는 `lib/chat/`. PR 디렉토리로 분리.
-- **A ↔ D/E**: REST 스펙(`/data/*`) 합의가 5/4 마일스톤. A가 호출, D/E가 응답.
-- **B ↔ C**: SSE 청크 포맷(`ChatChunk.type`별 payload)이 5/4 마일스톤.
-- **C ↔ D/E**: Tool 시그니처(`get_/create_/update_/delete_*`)가 5/4 마일스톤. C는 LangGraph `@tool`로 래핑해 호출.
+- **A ↔ D/E**: REST 스펙(`/data/*`) — `schemas/models.py` 모델 그대로. **이미 락**.
+- **B ↔ C**: SSE 청크 포맷(`ChatChunk.type`별 payload) — `schemas/CLAUDE.md` 표 참조. **이미 락**.
+- **C ↔ D/E**: Tool 시그니처(`get_/create_/update_/delete_*`) — `tools/CLAUDE.md`. **이미 락**. C는 LangGraph `@tool`로 래핑해 호출.
 
 ### 장점과 리스크
 
-- **장점**: FE/BE 분리가 자연스러워 병렬성 최대. 각자 슬라이스가 다른 기술 스택을 깊게 학습.
-- **리스크**: 합의 포인트가 3개(REST·SSE·Tool 시그) → 5/4에 락 필수. Flutter Web이 처음인 팀원은 셋업에 시간 소요.
+- **장점**: FE/BE 분리가 자연스러워 병렬성 최대. 회의 없이도 인터페이스가 박혀 있어 충돌 적음.
+- **리스크**: Flutter Web이 처음인 팀원(A·B)은 셋업에 시간 소요. C의 LangGraph 학습 부담이 가장 큼 — 5/4 시작 직후 Quickstart 1회 비동기 학습 권장.
 
 ---
 
 ## 2. 통합 전략 (3가지 핵심 약속)
 
-### 약속 1. 인터페이스는 5/4에 한 번만 합의한다
+### 약속 1. 인터페이스는 이미 락됨
 
-`schemas/models.py`(Pydantic) + `backend/api/`(FastAPI 라우터) + `tools/data_tools.py`(시그니처)에 한 번 박으면 그 후엔 데일리 싱크에서만 변경.
+`schemas/models.py`(Pydantic) + `backend/api/`(FastAPI 라우터) + `tools/data_tools.py`(시그니처)에 박혀 있음. 변경은 `[interface-change]` PR + 5명 react로만.
 
 대상 모델: `CalendarEvent`, `HealthSnapshot`, `WorkoutRecord`, `WorkoutSlot`, `MuscleFatigueState`, `ScheduleProposal`, `ChatRequest`, `ChatChunk`, `AgentResponse`.
 
@@ -71,7 +76,7 @@ POST /agent/chat (SSE)
 
 ### 약속 3. 같은 파일 동시 수정은 함수/엔드포인트 단위 PR로 쪼갠다
 
-`tools/data_tools.py`(D, E)와 `backend/api/data.py`(D, E)는 둘이 만진다. PR 제목에 `[tools] create_calendar_event 구현` 식으로 자기 함수를 명시하고, 같은 파일 PR이 겹치면 즉시 데일리 싱크에서 머지 순서를 정한다.
+`tools/data_tools.py`(D, E)와 `backend/api/data.py`(D, E)는 둘이 만진다. PR 제목에 `[tools] create_calendar_event 구현` 식으로 자기 함수를 명시하고, 같은 파일 PR이 겹치면 PR 코멘트로 머지 순서 합의 (먼저 올린 사람이 머지 우선).
 
 ---
 
@@ -81,28 +86,27 @@ POST /agent/chat (SSE)
 
 > **본인 to-do만 빠르게 보려면** `people/<본인>.md` (예: `people/A_노준영.md`) — 같은 일정을 사람 시점으로 정리.
 
-### 5/4 (월) — 인터페이스 락 + 페어 학습
+### 5/4 (월) — 비동기 시작 (회의 없음)
 
-**그날의 목표**: 5/4 EOD까지 모든 사람의 stub PR이 main에 들어가 있다 + 합의 3종 락.
+**그날의 목표**: EOD까지 모든 사람의 stub PR이 main에 들어가 있다.
 
-전원 공통:
-- 킥오프 90분 (`킥오프_5월4일.md` 참조)
-- LangGraph 공식 Quickstart 1시간 페어 학습
-- `schemas/models.py` 한 줄씩 같이 읽고 합의 후 머지
-- REST 엔드포인트 스펙 + `ChatChunk.type`별 payload 합의
+전원 공통 (비동기):
+- 환경 셋업 (`킥오프_5월4일.md` 시작 체크리스트 참조)
+- LangGraph 공식 Quickstart 1회 (각자 본인 페이스로) — C는 더 깊게
+- 본인 슬라이스 디렉토리 `CLAUDE.md` + `docs/planning/people/<본인>.md` 정독
 
 각자:
-- **A**: `frontend/`에 `flutter create .` 실행, 빈 화면 1회 띄움
-- **B**: `frontend/lib/chat/` 디렉토리 만들고 채팅 위젯 골격, `ChatChunk` payload 표 초안 (C와 합의)
-- **C**: `agent/graph.py::run_agent_stream` 더미 청크 emit (이미 구현됨), 시스템 프롬프트 초안
-- **D**: `data/calendar.json` 더미 5건 + `get_calendar` 1차 구현
-- **E**: `data/health.json` 더미 5건 + `get_health` 1차 구현 (D-E의 도메인 분담은 데일리 싱크에서)
+- **A**: `frontend/`에 `flutter create .` 실행, 빈 화면 1회 띄움 (`flutter run -d chrome`)
+- **B**: `frontend/lib/chat/` 디렉토리 + 채팅 위젯 골격 PR (입력창 + 메시지 리스트만)
+- **C**: 시스템 프롬프트 초안 (`agent/prompts.py`에 ReAct 3단계 강제 문구) — `run_agent_stream` 더미 청크는 이미 구현됨
+- **D**: `data/calendar.json` 더미 5건 + `get_calendar` 1차 구현 (JSON 파싱)
+- **E**: `data/health.json` 더미 5건 + `get_health` 1차 구현 (JSON 파싱)
 
 **합격 기준**:
-- [ ] `schemas/models.py`가 main에 머지됨
 - [ ] 5명 각자 첫 PR이 main에 머지됨
 - [ ] `uvicorn backend.main:app --reload`로 부팅, `GET /health` 200 OK
 - [ ] `pytest`가 통과
+- [ ] (A) `flutter run -d chrome`으로 빈 Flutter Web 화면 떠 있음
 
 ---
 
@@ -160,7 +164,7 @@ POST /agent/chat (SSE)
 
 **그날의 목표**: 사용자 입력부터 화면 출력까지 end-to-end 1회 성공 (Flutter ↔ FastAPI ↔ Agent ↔ Tools ↔ JSON).
 
-전원: 통합 디버깅. 막히면 즉시 데일리 싱크 재소집.
+전원: 통합 디버깅 집중일. 막히면 즉시 팀 채널에 공유 (필요 시 짧은 화상 통화).
 
 각자:
 - **A**: 화면 전체 조립, BE 실연결 검증
@@ -221,10 +225,12 @@ POST /agent/chat (SSE)
 
 ## 5. 협업 룰 (요약)
 
+- **회의 없음** — 비동기 협업. 일상 작업은 본인 판단, 인터페이스 변경은 PR로만.
 - **Git**: `main` 보호, 브랜치는 `feat/<A~E>-<짧은설명>`, 셀프 머지 금지, 리뷰어 1명 이상 승인 필요
-- **데일리 15분 싱크**: 어제 한 것 / 오늘 할 것 / 막힌 것. 인터페이스 변경 논의는 이 자리에서만.
+- **인터페이스 변경**: PR 제목에 `[interface-change]` 태그 + 5명 모두 react 후 머지 (`schemas/models.py`·Tool 시그·REST·SSE 청크)
+- **머지 충돌 가능성**: 같은 파일 동시 작업 시 PR 코멘트로 순서 합의 (먼저 올린 사람 머지 우선)
 - **시크릿**: `.env` 절대 커밋 금지. 새 키는 `.env.example`에 키 이름만 추가.
-- **공유 채널**: 카톡 또는 디스코드 (5/4에 결정), GitHub PR 리뷰
+- **공유 채널**: 팀 카톡/디스코드 + GitHub PR 리뷰
 
 ---
 
@@ -245,8 +251,11 @@ A. 한 사람이 한 영역(FE 대시보드 / FE 채팅 / Agent / Tool)을 풀�
 **Q. "Mock-first"가 뭐예요?**
 A. 다른 사람 코드 기다리지 말고 가짜 데이터로 먼저 돌리라는 뜻. 예를 들어 A는 BE가 501을 돌려도 UI 로딩 상태로 화면을 먼저 만든다. 5/8에 진짜 응답으로 갈아끼우면 됨.
 
+**Q. 회의가 없는데 의견 충돌은 어떻게 해결하나요?**
+A. 인터페이스 변경(`schemas`, Tool 시그, REST, SSE)이면 PR에 `[interface-change]` 태그 + 5명 모두 react 후 머지. 일상 작업은 본인 판단으로 진행, 막히면 GitHub Issue 또는 팀 채널.
+
 **Q. "인터페이스 락"이 뭐예요?**
-A. REST 엔드포인트, Tool 함수 시그니처, SSE 청크 포맷을 5/4에 정해놓고 그 후엔 마음대로 바꾸지 않는다는 뜻. 안 그러면 한 명이 시그니처 바꾸면 나머지가 다 깨진다. 변경이 꼭 필요하면 데일리 싱크에서 합의 후 한 PR로.
+A. REST 엔드포인트, Tool 함수 시그니처, SSE 청크 포맷을 미리 정해놓고 그 후엔 마음대로 바꾸지 않는다는 뜻. 안 그러면 한 명이 시그니처 바꾸면 나머지가 다 깨진다. 변경이 꼭 필요하면 `[interface-change]` PR + 5명 react 후 한 PR로.
 
 **Q. PR 사이즈는 어느 정도가 적당한가요?**
 A. 함수 1~2개 또는 엔드포인트 1개 단위. `[tools] create_calendar_event 구현` 같은 단일 책임 PR이 이상적. 한 PR에 100줄 넘으면 쪼갤 수 있는지 검토.

@@ -4,6 +4,8 @@
 
 LangGraph Agent — prompt + graph + nodes + 체크포인터. `run_agent_stream` 진입점에서 FE 규격(`ChatChunk`)에 맞춰 SSE 청크 emit.
 
+> **부담 분산 (D/E와 협업)**: 시스템 프롬프트 초안만 C 단독, 시나리오 케이스 제공·튜닝은 E 주도. KPI 자동화는 D/E가 시나리오 매칭 코드 짜고 C는 그래프 검증만. → C는 LangGraph 학습 + 그래프 골격에 집중.
+
 ## 주 디렉토리·파일
 
 - `agent/graph.py` — `StateGraph` 컴파일, `run_agent`/`run_agent_stream` 진입점
@@ -12,10 +14,10 @@ LangGraph Agent — prompt + graph + nodes + 체크포인터. `run_agent_stream`
 - `memory/` — 체크포인터 (InMemorySaver → SqliteSaver)
 - `backend/api/chat.py` — B와 합의된 SSE 라우터에 `run_agent_stream` 위임
 
-## 합의 책임 (5/4 락)
+## 합의 (이미 락)
 
-- **B와**: `ChatChunk.type` 5종 payload 키 → `schemas/CLAUDE.md` 표
-- **D/E와**: Tool 시그니처(`get_/create_/update_/delete_*`) — LangGraph `@tool` 데코레이터로 래핑할 형태
+- **B와**: `ChatChunk.type` 5종 payload 키 — `schemas/CLAUDE.md` 표에 박힘. 변경 시 `[interface-change]` PR.
+- **D/E와**: Tool 시그니처(`get_/create_/update_/delete_*`) — `tools/CLAUDE.md`에 박힘. LangGraph `@tool` 데코레이터로 래핑해 호출.
 
 ## 일자별 to-do
 
@@ -26,7 +28,7 @@ LangGraph Agent — prompt + graph + nodes + 체크포인터. `run_agent_stream`
 | **5/6 (수)** | 페르소나 톤 프롬프트 완성 / 빈 시간 탐색 + 운동 매칭 로직 (스케줄 도출) | stub LLM이라도 `ScheduleProposal` 청크가 yield됨 |
 | **5/7 (목)** | LangGraph 체크포인터(InMemorySaver), refine 노드, 재조정 프롬프트 | 같은 `thread_id` 두 번째 호출 시 이전 제안 기억 |
 | **5/8 (금)** ★ | 실제 LLM(GPT-4o) 호출 / ReAct 3단계 로그로 검증 | end-to-end에서 진짜 GPT 응답이 청크로 도달 |
-| **5/9 (토)** | 그래프 디버깅 / KPI 자동화 (`pytest -m kpi`) | KPI 시나리오 5개 모두 통과 |
+| **5/9 (토)** | 그래프 디버깅 (시나리오 매칭 코드는 D/E) | KPI 시나리오 5개 모두 통과 (`pytest -m kpi`) |
 | **5/10 (일)** | 데모 멘트 페르소나 톤 일관성 / 회귀 테스트 | 데모 시연 무사고 |
 
 ## KPI 시나리오 — 본인 영향 (메인 책임)

@@ -69,4 +69,4 @@ LangGraph 체크포인터는 `memory/` 모듈에서 정의. `graph.py`에서 컴
 - 노드 함수의 입력/출력 dict 키는 명확히 명명 (`messages`, `tool_calls`, `proposal` 등)
 - LLM 호출은 `langchain_openai.ChatOpenAI`, 모델은 `gpt-4o`
 - API 키는 `os.getenv("OPENAI_API_KEY")`로 읽고, 없으면 명확히 에러
-- FE가 받을 청크 포맷이 바뀌면 B와 데일리 싱크에서 합의 후 `schemas/CLAUDE.md` 같이 수정
+- FE가 받을 청크 포맷이 바뀌면 B와 PR 코멘트로 합의 후 `schemas/CLAUDE.md` 같이 수정 (`[interface-change]` 태그 + 5명 react)

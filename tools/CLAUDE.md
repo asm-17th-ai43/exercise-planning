@@ -1,6 +1,6 @@
 # tools/ — Agent 데이터 Tool (CRUD)
 
-> **담당**: D(박영준) + E(신승민). 도메인 분담(calendar/health/workouts)은 데일리 싱크에서 결정.
+> **담당**: D(박영준) — calendar + workouts (CRUD 8개). E(신승민) — health (CRUD 4개) + 시나리오·프롬프트 튜닝 주도.
 > 같은 파일(`data_tools.py`)을 둘이 만지므로 **함수 단위 PR**로 쪼개기.
 
 ## 원칙
@@ -60,5 +60,5 @@ def calendar_tool(start: str, end: str) -> list[dict]:
 ## 협업 룰
 
 - PR 제목에 `[tools] create_calendar_event 구현` 식으로 자기 함수 명시
-- 같은 파일 동시 수정이 필요한 PR이 두 개 이상이면 데일리 싱크에서 머지 순서 확정
+- 같은 파일 동시 수정이 필요한 PR이 두 개 이상이면 PR 코멘트로 머지 순서 합의
 - import 추가는 알파벳 정렬 유지

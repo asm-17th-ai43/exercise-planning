@@ -1,6 +1,6 @@
 # schemas/ — 공통 데이터 모델
 
-> **담당**: 전원이 import. 변경은 데일리 싱크 합의 후 한 PR로만.
+> **담당**: 전원이 import. 변경은 `[interface-change]` PR로만 (5명 react 후 머지).
 
 ## 역할
 
@@ -27,7 +27,7 @@
 | `ChatRequest` | `POST /agent/chat` 요청 본문 |
 | `ChatChunk` | `POST /agent/chat` SSE 스트림 청크 1개 |
 
-`ChatChunk.type`별 `payload` 스키마 (B/C 합의 — 필요 시 데일리 싱크에서 갱신):
+`ChatChunk.type`별 `payload` 스키마 (이미 락 — 변경은 `[interface-change]` PR로):
 
 | type | payload |
 |---|---|
@@ -39,9 +39,9 @@
 
 ## 변경 절차
 
-1. 데일리 싱크에서 변경안 공유 (왜 필요한지 이유 포함)
-2. 합의되면 `models.py` + 영향받는 모든 호출부를 **하나의 PR**에 묶어 수정
-3. 머지 직후 슬랙/카톡 공지
+1. PR 제목에 `[interface-change]` 태그 + 변경 이유를 PR 설명에 (왜 필요한지)
+2. `models.py` + 영향받는 모든 호출부를 **하나의 PR**에 묶어 수정
+3. **5명 모두 react** 후 머지, 머지 직후 팀 채널 공지
 
 ## 작업 시 주의
 

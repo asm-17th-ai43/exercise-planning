@@ -1,8 +1,11 @@
-"""데이터 조회·변경 Tool. 담당: D(박영준) + E(신승민).
+"""데이터 조회·변경 Tool.
+
+담당:
+- D(박영준): calendar + workouts CRUD 8개
+- E(신승민): health CRUD 4개
 
 유저가 FE에서 보는 모든 데이터는 agent도 그대로 본다 — 그러므로 read+write 둘 다.
 같은 파일을 둘이 만지므로 PR을 함수 단위로 잘게 쪼갤 것.
-D-E의 도메인 분담(예: D=calendar/workouts, E=health/scenarios)은 데일리 싱크에서 결정.
 """
 from datetime import date
 

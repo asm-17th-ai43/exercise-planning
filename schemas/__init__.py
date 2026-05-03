@@ -1,6 +1,8 @@
 from .models import (
     AgentResponse,
     CalendarEvent,
+    ChatChunk,
+    ChatRequest,
     HealthSnapshot,
     MuscleFatigueState,
     ScheduleProposal,
@@ -11,6 +13,8 @@ from .models import (
 __all__ = [
     "AgentResponse",
     "CalendarEvent",
+    "ChatChunk",
+    "ChatRequest",
     "HealthSnapshot",
     "MuscleFatigueState",
     "ScheduleProposal",

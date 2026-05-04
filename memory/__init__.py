@@ -2,3 +2,6 @@
 
 in-memory로 시작 → 필요 시 SQLite 체크포인터로 교체.
 """
+from langgraph.checkpoint.memory import InMemorySaver
+
+checkpointer = InMemorySaver()

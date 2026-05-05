@@ -45,12 +45,13 @@ def create_calendar_event(event: CalendarEvent) -> CalendarEvent:
 
 def update_calendar_event(event_id: str, patch: dict) -> CalendarEvent:
     """이벤트 부분 수정. 갱신된 이벤트 반환."""
-    raise NotImplementedError("D/E 합의 후 구현")
+    row = _client().table("calendar_events").update(patch).eq("id", event_id).execute()
+    return CalendarEvent.model_validate(row.data[0])
 
 
 def delete_calendar_event(event_id: str) -> None:
     """이벤트 1건 삭제."""
-    raise NotImplementedError("D/E 합의 후 구현")
+    _client().table("calendar_events").delete().eq("id", event_id).execute()
 
 
 # ---------- Health ----------
@@ -90,14 +91,17 @@ def get_workouts(start: date, end: date) -> list[WorkoutRecord]:
 
 def create_workout(record: WorkoutRecord) -> WorkoutRecord:
     """운동 기록 1건 추가."""
-    raise NotImplementedError("D/E 합의 후 구현")
+    data = record.model_dump(mode="json", exclude={"id"})
+    row = _client().table("workout_records").insert(data).execute()
+    return WorkoutRecord.model_validate(row.data[0])
 
 
 def update_workout(record_id: str, patch: dict) -> WorkoutRecord:
     """운동 기록 부분 수정."""
-    raise NotImplementedError("D/E 합의 후 구현")
+    row = _client().table("workout_records").update(patch).eq("id", record_id).execute()
+    return WorkoutRecord.model_validate(row.data[0])
 
 
 def delete_workout(record_id: str) -> None:
     """운동 기록 1건 삭제."""
-    raise NotImplementedError("D/E 합의 후 구현")
+    _client().table("workout_records").delete().eq("id", record_id).execute()

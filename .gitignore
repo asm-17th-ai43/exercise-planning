@@ -8,3 +8,6 @@ __pycache__/
 .vscode/
 *.sqlite
 *.db
+
+# MCP server config — per-developer (Supabase project ref, etc.)
+.mcp.json

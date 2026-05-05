@@ -22,7 +22,7 @@ Flutter Web 대시보드 — 좌측 카드 3종(일정/컨디션/최근 운동) 
 | 날짜 | 할 일 | 합격 기준 |
 |---|---|---|
 | **5/4 (월)** | `cd frontend && flutter create .` 실행 / 빈 화면 1회 띄움 (`flutter run -d chrome`) / 첫 PR | 빈 Flutter Web 화면 떠 있음 |
-| **5/5 (화)** | Supabase 프로젝트 생성 + `supabase_flutter` 초기화 + 좌측 카드 1종 더미 렌더 + `lib/api/getCalendar()` Supabase 쿼리 1개 | Supabase에서 조회한 데이터가 카드에 표시 |
+| **5/5 (화)** | Supabase 프로젝트 생성 → **`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` 팀 채널에 공유 (전원이 .env에 채워야 함)** → `supabase_flutter` 초기화 + 좌측 카드 1종 더미 렌더 + `lib/api/getCalendar()` Supabase 쿼리 1개 | Supabase에서 조회한 데이터가 카드에 표시 |
 | **5/6 (수)** | 좌측 카드 3종 + 가운데 피로도 레이더 모두 Supabase 실데이터 연동 | 좌·중앙 4종 위젯이 Supabase 실데이터로 갱신 |
 | **5/7 (목)** | 카드 로딩/에러 상태, 색상 단계화 (피로도 0=초록 → 5=빨강) | 네트워크 지연/501 에러 시 UI 깨지지 않음 |
 | **5/8 (금)** ★ | 화면 전체 조립, BE 실연결 검증 | 채팅에 "이번 주 운동 추천해줘" → 카드 3종 + 추천 슬롯 + 레이더 모두 출력 |

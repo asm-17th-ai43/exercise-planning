@@ -1,19 +1,22 @@
-# data/ — 가상 데이터 (JSON)
+# data/ — 가상 데이터 (Supabase + 시딩용 JSON)
 
-> **담당**: D(박영준) — `calendar.json`, `workouts.json`. E(신승민) — `health.json`, `scenarios/` 5개 적재 주도.
+> **담당**: D(박영준) — `calendar_events`, `workout_records` 테이블 + 시딩 JSON. E(신승민) — `health_snapshots` 테이블 + `scenarios/` 5개 적재 주도.
 
-실제 Google Calendar / Apple Health 연동은 **MVP 범위 외**. 모든 데이터는 여기 JSON에서만 읽고 쓴다. (DB 도입은 데모 이후 검토 — schemas/models.py가 사실상 DB 스키마.)
+실제 Google Calendar / Apple Health 연동은 **MVP 범위 외**. **단일 진실 소스는 Supabase 테이블** — `calendar.json` 등 JSON 파일은 초기 시딩 입력용이고 직접 읽지 않는다. `schemas/models.py` 모델이 Supabase 테이블 스키마와 1:1 매핑.
 
 ## 디렉토리
 
 ```
 data/
-├── calendar.json      # 데모 페르소나 기본 일정
-├── health.json        # 데모 페르소나 기본 컨디션
-├── workouts.json      # 데모 페르소나 기본 운동 기록
+├── calendar.json      # Supabase calendar_events 시딩 입력 (D)
+├── health.json        # Supabase health_snapshots 시딩 입력 (E)
+├── workouts.json      # Supabase workout_records 시딩 입력 (D)
+├── seed.py            # Supabase에 JSON 데이터를 올리는 시딩 스크립트 (D/E)
 └── scenarios/         # D/E가 정의하는 데모/테스트 시나리오 3~5개
     └── <scenario>.json
 ```
+
+**Supabase 테이블**: `calendar_events`, `health_snapshots`, `workout_records`. 실제 CRUD는 Flutter → Supabase SDK, Agent → `tools/data_tools.py` → supabase-py 로 이루어짐.
 
 ## 페르소나 (기본 데이터)
 
@@ -71,6 +74,7 @@ KPI 5개 + 엣지 케이스를 시나리오 단위로 묶어 보관. 데모 시�
 
 ## 작업 시 주의
 
-- 새 필드 추가 전엔 `schemas/models.py` 모델부터 수정
+- 새 필드 추가 전엔 `schemas/models.py` 모델 수정 → Supabase 테이블 스키마 변경 → `seed.py` 반영 순서로
 - 한국어 키워드(`title`, 운동명, 부위명)는 한글 유니코드 그대로 (escape 금지)
+- JSON 파일은 시딩 레퍼런스. **직접 읽어서 데이터 소스로 쓰지 말 것** — Supabase에서 읽는다
 - JSON 검증: `python -c "import json; json.load(open('data/<file>.json'))"` 통과해야 PR

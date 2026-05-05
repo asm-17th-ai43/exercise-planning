@@ -24,10 +24,10 @@
 
 | # | 슬라이스 | 담당 | 디렉토리·책임 |
 |---|---|---|---|
-| **A** | Flutter Web 프론트 (대시보드) | **노준영** | `frontend/` 전체. 좌측 카드 3종(일정/컨디션/최근 운동) + 가운데 부위별 피로도 레이더. BE의 `/data/*` REST 호출. |
+| **A** | Flutter Web 프론트 (대시보드) | **노준영** | `frontend/` 전체. 좌측 카드 3종(일정/컨디션/최근 운동) + 가운데 부위별 피로도 레이더. **Supabase SDK 직접 CRUD** (FastAPI `/data/*` 우회). |
 | **B** | Chat UI + Agent 통신 프로토콜 | **박장우** | `frontend/lib/chat/` (FE 채팅, SSE 클라이언트, 디자인) + `backend/api/chat.py` 스펙 (C와 공동). Stream 구현. |
 | **C** | LangGraph Agent (prompt + graph + memory) | **이유준** | `agent/`, `memory/`. `run_agent_stream` 진입점, SSE 청크 emit. |
-| **D** | CRUD Tool (calendar + workouts) + Tech Lead | **박영준** | `tools/data_tools.py` (calendar·workouts CRUD 8개) + `data/calendar.json`·`workouts.json` + `backend/api/data.py` 위임 |
+| **D** | CRUD Tool (calendar + workouts) + Tech Lead | **박영준** | `tools/data_tools.py` (calendar·workouts CRUD 8개) + `data/calendar.json`·`workouts.json` 시딩 + Supabase 연결 |
 | **E** | CRUD Tool (health) + 시나리오 + 프롬프트 튜닝 | **신승민** | `tools/data_tools.py` (health CRUD 4개) + `data/health.json` + `data/scenarios/` 5개 적재 주도 + `agent/prompts.py` 튜닝 (C와) |
 
 **Tech Lead**: **D 박영준** — 매일 저녁 main 동작 확인 + Flutter↔FastAPI 통합 책임. CRUD가 패턴 반복이라 후반 여유가 있고, FE/Agent 사이 데이터 흐름의 진실을 가장 잘 봄.
@@ -36,9 +36,9 @@
 
 ## 2. 기술 스택
 
-- **Backend**: Python 3.11+ / FastAPI / uvicorn / sse-starlette / LangGraph(+LangChain) / OpenAI GPT-4o / Pydantic v2
-- **Frontend**: Flutter Web (Dart)
-- **Datastore**: 로컬 JSON (`data/*.json`). 실제 Google Calendar/Apple Health API 미연동. `schemas/models.py`가 사실상 DB 스키마.
+- **Backend**: Python 3.11+ / FastAPI / uvicorn / sse-starlette / LangGraph(+LangChain) / OpenAI GPT-4o / Pydantic v2 / supabase-py
+- **Frontend**: Flutter Web (Dart) / supabase_flutter
+- **Datastore**: Supabase (PostgreSQL). 실제 Google Calendar/Apple Health API 미연동. `schemas/models.py`가 Supabase 테이블 스키마와 1:1 매핑.
 - **Agent 메모리**: LangGraph 체크포인터 (in-memory → 필요 시 SQLite)
 - **의존성**: Python은 `requirements.txt`, Flutter는 `frontend/pubspec.yaml`. 추가 시 팀 채널 공지 + PR 설명에 명시.
 
@@ -69,24 +69,18 @@ AI_TECH_EDU/
 ## 4. 인터페이스 진입점 (자세한 모델은 `schemas/CLAUDE.md`)
 
 ```python
-# tools/data_tools.py — D, E (read + write 모두)
+# tools/data_tools.py — D, E (Agent 전용 Supabase 접근)
 get_calendar(start, end) -> list[CalendarEvent]
 create_calendar_event(event) -> CalendarEvent
 update_calendar_event(id, patch) -> CalendarEvent
 delete_calendar_event(id) -> None
-# health, workouts 동일 패턴
+# health, workouts 동일 패턴 (내부 구현은 supabase-py, 시그니처는 락)
 
 # agent/graph.py — C
 async def run_agent_stream(user_input, thread_id) -> AsyncIterator[ChatChunk]
 # (비스트림 run_agent도 보존 — 테스트·단순 호출용)
 
-# backend/api/ — FastAPI 라우터 (얇은 위임)
-GET    /data/calendar?start&end       -> list[CalendarEvent]
-POST   /data/calendar                  -> CalendarEvent
-PATCH  /data/calendar/{id}             -> CalendarEvent
-DELETE /data/calendar/{id}             -> 204
-# health, workouts 동일
-
+# backend/api/ — FastAPI 라우터 (/data/* 없음 — Flutter가 Supabase 직접 호출)
 POST   /agent/chat   (SSE)             -> stream of ChatChunk
 GET    /health                          -> ping
 ```
@@ -95,7 +89,7 @@ GET    /health                          -> ping
 
 ## 5. 협업 규칙
 
-- **Git**: `main` 보호, 브랜치 `feat/<A~E>-<짧은설명>`, PR은 함수/엔드포인트 단위로 작게, 리뷰어 1명 이상 승인 후 머지(셀프 머지 금지). 같은 파일(`tools/data_tools.py`, `backend/api/data.py`)을 여럿이 만질 땐 PR 코멘트로 머지 순서 합의.
+- **Git**: `main` 보호, 브랜치 `feat/<A~E>-<짧은설명>`, PR은 함수/엔드포인트 단위로 작게, 리뷰어 1명 이상 승인 후 머지(셀프 머지 금지). 같은 파일(`tools/data_tools.py`)을 여럿이 만질 땐 PR 코멘트로 머지 순서 합의.
 - **Mock-first**: 데이터/타 슬라이스 함수가 없어도 `schemas/` 더미와 `NotImplementedError` / `501` stub으로 작업 시작. 실제 LLM 호출은 5/8 통합 전까지 stub 가능.
 - **합의 메커니즘 (회의 없음)**: 일상 작업은 본인 판단으로 진행. **인터페이스 변경**(`schemas/models.py`·Tool 시그·REST·SSE 청크)이 필요하면 PR 제목에 `[interface-change]` 태그 + 5명 모두 react 후 머지. 막힌 게 있으면 GitHub Issue 또는 팀 채널.
 - **시크릿**: `.env` 절대 커밋 금지(`.gitignore` 등록), 새 변수는 `.env.example`에 키만 추가.
@@ -110,13 +104,21 @@ GET    /health                          -> ping
 # Backend (Python)
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # OPENAI_API_KEY 채우기
+cp .env.example .env  # OPENAI_API_KEY + SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY 채우기
 uvicorn backend.main:app --reload      # http://localhost:8000/docs (Swagger)
 pytest
+
+# Supabase (A/노준영이 5/5에 프로젝트 생성 → 팀 채널 공유)
+# 1. supabase.com 에서 새 프로젝트 생성
+# 2. SQL Editor에서 테이블 생성 (calendar_events / health_snapshots / workout_records)
+# 3. SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY 를 팀 채널에 공유
+# 4. 전원 .env 파일에 추가
 
 # Frontend (Flutter Web — A가 5/5에 셋업)
 cd frontend
 flutter create .
+# pubspec.yaml에 supabase_flutter: ^2.0.0 추가 후:
+flutter pub get
 flutter run -d chrome
 ```
 
@@ -152,3 +154,4 @@ flutter run -d chrome
 - 다른 슬라이스 디렉토리를 합의 없이 리팩터링
 - 사용자에게 보여줄 메시지를 영어로 작성
 - FastAPI 라우터에서 OpenAI 직접 호출 (전부 `agent/nodes.py` 경유)
+- JSON 파일 직접 편집으로 데이터 변경 (Supabase가 단일 진실 소스)

@@ -28,7 +28,7 @@ data/
 
 ### `calendar.json`
 ```json
-{"start": "2026-05-04T09:00:00", "end": "...", "title": "스탠드업", "is_busy": true}
+{"start_at": "2026-05-04T09:00:00", "end_at": "...", "title": "스탠드업", "is_busy": true}
 ```
 - `start/end`는 ISO 8601 (시간대 없음, 로컬 가정)
 - `is_busy: false`는 운동 가능한 빈 시간 (점심·퇴근 후 등)

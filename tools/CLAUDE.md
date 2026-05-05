@@ -31,7 +31,7 @@ def delete_calendar_event(event_id: str) -> None: ...
 - 파일 경로는 `pathlib.Path(__file__).parent.parent / "data" / "..."` 같은 상대 위치로 (CWD 의존 X)
 - 파싱은 Pydantic의 `Model.model_validate(dict)` 사용 — 타입 안전
 - 빈 결과는 빈 리스트 `[]`. None 반환 금지.
-- 날짜 비교는 `event.start.date()` 같이 `date` 타입으로 통일
+- 날짜 비교는 `event.start_at.date()` 같이 `date` 타입으로 통일
 - write는 read-modify-write로 atomic하게 (임시 파일 → 원자적 rename 권장)
 
 ## LangGraph Tool 등록

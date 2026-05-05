@@ -6,13 +6,15 @@ from pydantic import BaseModel, Field
 
 
 class CalendarEvent(BaseModel):
-    start: datetime
-    end: datetime
+    id: int | None = None
+    start_at: datetime
+    end_at: datetime
     title: str
     is_busy: bool = True
 
 
 class HealthSnapshot(BaseModel):
+    id: int | None = None
     date: date
     sleep_hours: float
     activity_minutes: int
@@ -20,6 +22,7 @@ class HealthSnapshot(BaseModel):
 
 
 class WorkoutRecord(BaseModel):
+    id: int | None = None
     date: date
     type: str
     duration_min: int

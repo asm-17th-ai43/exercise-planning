@@ -6,6 +6,8 @@
 
 5개 슬라이스(A~E)의 **인터페이스 계약**. 모든 모듈은 `from schemas.models import ...`로 import한다. 이 파일이 바뀌면 전원의 코드가 영향받으므로 단독 결정 금지.
 
+**Supabase 테이블 매핑**: `CalendarEvent` → `calendar_events`, `HealthSnapshot` → `health_snapshots`, `WorkoutRecord` → `workout_records`. Python 쪽은 `Model.model_validate(row)`, Flutter 쪽은 `fromJson(row)` 로 변환.
+
 ## 모델 (Pydantic v2)
 
 ### 도메인 모델

@@ -32,7 +32,7 @@
 ### 인접 협업 (이미 락 완료)
 
 - **A ↔ B**: 같은 Flutter 앱. A는 `lib/cards/`, `lib/api/`. B는 `lib/chat/`. PR 디렉토리로 분리.
-- **A ↔ D/E**: REST 스펙(`/data/*`) — `schemas/models.py` 모델 그대로. **이미 락**.
+- **A ↔ D/E**: Supabase 테이블 스키마 (`calendar_events` / `health_snapshots` / `workout_records`) — `schemas/models.py` 모델 그대로. **이미 락**.
 - **B ↔ C**: SSE 청크 포맷(`ChatChunk.type`별 payload) — `schemas/CLAUDE.md` 표 참조. **이미 락**.
 - **C ↔ D/E**: Tool 시그니처(`get_/create_/update_/delete_*`) — `tools/CLAUDE.md`. **이미 락**. C는 LangGraph `@tool`로 래핑해 호출.
 
@@ -53,7 +53,7 @@
 
 대상 함수/엔드포인트:
 ```python
-# Tool (D/E)
+# Tool (D/E) — 내부 구현은 supabase-py, 시그니처는 락
 get_/create_/update_/delete_calendar_event
 get_/create_/update_/delete_health_snapshot
 get_/create_/update_/delete_workout
@@ -61,22 +61,22 @@ get_/create_/update_/delete_workout
 # Agent (C)
 async run_agent_stream(user_input, thread_id) -> AsyncIterator[ChatChunk]
 
-# REST (B/D/E 합의)
-GET/POST/PATCH/DELETE /data/{calendar,health,workouts}
+# FastAPI (B/C 합의) — /data/* 없음, Flutter가 Supabase 직접 호출
 POST /agent/chat (SSE)
+GET  /health
 ```
 
 ### 약속 2. 더미 데이터로 먼저 동작시킨다
 
 다른 사람의 실제 함수를 기다리지 말고 더미로 자기 슬라이스를 일단 돌려본다. 5/8 통합 전까지 LLM 호출도 stub OK.
 
-- D/E (Tool): JSON 파일부터 만들고 `get_*` 부터 채움
+- D/E (Tool): Supabase 테이블 연결 후 `get_*` 부터 채움
 - C (Agent): stub Tool로 그래프 골격, `run_agent_stream`이 더미 청크 yield (이미 구현됨)
 - A/B (FE): BE가 501 돌려줘도 UI 로딩/에러 상태로 화면을 먼저 그림
 
 ### 약속 3. 같은 파일 동시 수정은 함수/엔드포인트 단위 PR로 쪼갠다
 
-`tools/data_tools.py`(D, E)와 `backend/api/data.py`(D, E)는 둘이 만진다. PR 제목에 `[tools] create_calendar_event 구현` 식으로 자기 함수를 명시하고, 같은 파일 PR이 겹치면 PR 코멘트로 머지 순서 합의 (먼저 올린 사람이 머지 우선).
+`tools/data_tools.py`(D, E)를 둘이 만진다. PR 제목에 `[tools] create_calendar_event 구현` 식으로 자기 함수를 명시하고, 같은 파일 PR이 겹치면 PR 코멘트로 머지 순서 합의 (먼저 올린 사람이 머지 우선).
 
 ---
 
@@ -115,16 +115,16 @@ POST /agent/chat (SSE)
 **그날의 목표**: 5명 각자가 자기 슬라이스를 단독으로 돌릴 수 있다.
 
 각자:
-- **A**: 좌측 카드 1종 (예: 일정 카드) 더미 데이터로 렌더, `lib/api/` REST 클라이언트 1개
+- **A**: Supabase 프로젝트 생성 + `supabase_flutter` 초기화 + 좌측 카드 1종 더미 렌더 + `lib/api/` Supabase 쿼리 1개
 - **B**: 채팅창 입력→stub 응답 루프, SSE 스트림 수신 골격 (백엔드 stub과 연결)
 - **C**: stub Tool로 그래프 1회 실행 성공, `tool_call` 청크 emit 시작
-- **D**: `get_*` JSON 실파싱 완성 (자기 도메인), CRUD 중 첫 write 함수 1개
-- **E**: D와 동일 (자기 도메인)
+- **D**: Supabase `calendar_events`·`workout_records` 연결 후 `get_*` 완성, CRUD 중 첫 write 함수 1개
+- **E**: D와 동일 (`health_snapshots` 도메인)
 
 **합격 기준**:
 - [ ] 각 슬라이스가 단위 테스트 1개씩 통과 (`tests/test_<A~E>_*.py`)
-- [ ] FastAPI Swagger(`/docs`)에서 GET /data/* 한 개 200 응답
-- [ ] Flutter 화면이 BE에서 받은 더미 데이터를 카드에 표시
+- [ ] FastAPI Swagger(`/docs`)에서 POST /agent/chat stub 200 응답
+- [ ] Flutter 화면이 Supabase에서 받은 데이터를 카드에 표시
 
 ---
 
@@ -162,7 +162,7 @@ POST /agent/chat (SSE)
 
 ### 5/8 (금) — ★ 1차 통합
 
-**그날의 목표**: 사용자 입력부터 화면 출력까지 end-to-end 1회 성공 (Flutter ↔ FastAPI ↔ Agent ↔ Tools ↔ JSON).
+**그날의 목표**: 사용자 입력부터 화면 출력까지 end-to-end 1회 성공 (Flutter ↔ Supabase / FastAPI ↔ Agent ↔ Tools ↔ Supabase).
 
 전원: 통합 디버깅 집중일. 막히면 즉시 팀 채널에 공유 (필요 시 짧은 화상 통화).
 
@@ -238,7 +238,7 @@ POST /agent/chat (SSE)
 
 - **Backend**: Python 3.11+ / FastAPI / uvicorn / sse-starlette / LangGraph(+LangChain) / OpenAI GPT-4o / Pydantic v2
 - **Frontend**: Flutter Web (Dart)
-- **데이터**: 로컬 JSON (`data/*.json`, `data/scenarios/*.json`)
+- **데이터**: Supabase (PostgreSQL). `data/*.json`은 시딩 입력용, `data/scenarios/*.json`은 KPI 시나리오 정의용.
 - **메모리**: LangGraph 체크포인터 (InMemorySaver, 시간 남으면 SqliteSaver)
 
 ---

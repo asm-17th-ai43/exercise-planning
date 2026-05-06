@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api/calendar_api.dart';
 import 'cards/calendar_card.dart';
 import 'cards/card_panel.dart';
+import 'chat/chat_panel.dart';
 import 'design/app_theme.dart';
 import 'design/tokens/colors.dart';
 import 'design/tokens/radius.dart';
@@ -185,10 +186,10 @@ class _DashboardBody extends StatelessWidget {
             child: _LeftColumn(api: api, weekStart: weekStart),
           ),
           const SizedBox(width: AppSpacing.s5),
-          // 우측 챗봇 영역 (5/12 ≈ 0.42)
+          // 우측 챗봇 영역 (5/12 ≈ 0.42) — Slice B: lib/chat/
           const Expanded(
             flex: 5,
-            child: _ChatPlaceholderPanel(),
+            child: ChatPanel(),
           ),
         ],
       ),
@@ -236,138 +237,6 @@ class _LeftColumn extends StatelessWidget {
           note: '5/6 · Fatigue 레이더 차트 (fl_chart RadarChart)',
         ),
       ],
-    );
-  }
-}
-
-class _ChatPlaceholderPanel extends StatelessWidget {
-  const _ChatPlaceholderPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.s5),
-      decoration: BoxDecoration(
-        color: AppColors.bgElevated1,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.borderSubtle),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.s2),
-                decoration: BoxDecoration(
-                  color: AppColors.bgElevated2,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Icon(
-                  LucideIcons.bot,
-                  size: 18,
-                  color: AppColors.accentPrimary,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('AI 코치', style: AppTypography.h3),
-                    Text(
-                      'B 슬라이스 · lib/chat/',
-                      style: AppTypography.caption,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                LucideIcons.messageSquarePlus,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s5),
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    LucideIcons.sparkles,
-                    size: 32,
-                    color: AppColors.accentPrimaryGlow,
-                  ),
-                  const SizedBox(height: AppSpacing.s3),
-                  Text(
-                    '"이번 주 운동 추천해줘"',
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s1),
-                  Text(
-                    'SSE 스트림 + 추천 슬롯 카드 · 5/8 통합',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          _ChatInputPlaceholder(),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChatInputPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-      decoration: BoxDecoration(
-        color: AppColors.bgElevated2,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            LucideIcons.plusCircle,
-            size: 18,
-            color: AppColors.textTertiary,
-          ),
-          const SizedBox(width: AppSpacing.s3),
-          Expanded(
-            child: Text(
-              '메시지를 입력하세요... (B 슬라이스)',
-              style: AppTypography.body.copyWith(
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.accentSecondary.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(
-              LucideIcons.send,
-              size: 16,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -11,8 +11,8 @@ void main() {
         'is_busy': true,
       });
 
-      expect(event.start, DateTime(2026, 5, 5, 9));
-      expect(event.end, DateTime(2026, 5, 5, 10));
+      expect(event.startAt, DateTime(2026, 5, 5, 9));
+      expect(event.endAt, DateTime(2026, 5, 5, 10));
       expect(event.title, '스탠드업');
       expect(event.isBusy, isTrue);
     });

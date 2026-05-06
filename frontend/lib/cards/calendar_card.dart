@@ -112,9 +112,9 @@ class _EventList extends StatelessWidget {
           if (i != 0) const Divider(height: 1, color: AppColors.divider),
           _EventRow(
             event: events[i],
-            isToday: _isSameDate(events[i].start, today),
-            dayLabel: dayLabel.format(events[i].start),
-            timeLabel: timeLabel.format(events[i].start),
+            isToday: _isSameDate(events[i].startAt, today),
+            dayLabel: dayLabel.format(events[i].startAt),
+            timeLabel: timeLabel.format(events[i].startAt),
           ),
         ],
       ],

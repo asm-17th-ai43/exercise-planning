@@ -1,0 +1,15 @@
+{
+  "name": "멀티턴 재조정 — 화요일 빼줘",
+  "description": "초기 ScheduleProposal 도출 후 '화요일은 피곤할 것 같아' 입력 → 해당 일자 슬롯만 변경되고 나머지는 유지되는지 검증 (KPI 4 — E 주도).",
+  "calendar": [],
+  "health": [],
+  "workouts": [],
+  "turns": [
+    {"user": "이번 주 운동 일정 짜줘"},
+    {"user": "화요일은 피곤할 것 같아"}
+  ],
+  "expected": {
+    "changed_dates": ["2026-05-05"],
+    "unchanged_dates_keep_slots": true
+  }
+}

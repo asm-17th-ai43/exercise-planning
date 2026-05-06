@@ -1,0 +1,11 @@
+{
+  "name": "꽉 찬 일주일 → 10분 대체 루틴",
+  "description": "1주 내내 일정이 꽉 찬 캘린더. 빈 시간이 거의 없을 때 10분짜리 홈트 또는 계단 운동을 제안하는지 검증 (KPI 3).",
+  "calendar": [],
+  "health": [],
+  "workouts": [],
+  "expected": {
+    "should_propose_short_routine": true,
+    "max_slot_minutes": 10
+  }
+}

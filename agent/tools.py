@@ -14,7 +14,8 @@ def calendar_tool(start: str, end: str) -> list[dict]:
     try:
         events = _get_calendar(date.fromisoformat(start), date.fromisoformat(end))
         return [e.model_dump(mode="json") for e in events]
-    except NotImplementedError:
+    except Exception:
+        # D/E 미구현 또는 Supabase 미연결 시 빈 리스트로 파이프라인 유지
         return []
 
 
@@ -24,7 +25,7 @@ def health_tool(start: str, end: str) -> list[dict]:
     try:
         snapshots = _get_health(date.fromisoformat(start), date.fromisoformat(end))
         return [s.model_dump(mode="json") for s in snapshots]
-    except NotImplementedError:
+    except Exception:
         return []
 
 
@@ -34,5 +35,5 @@ def workouts_tool(start: str, end: str) -> list[dict]:
     try:
         records = _get_workouts(date.fromisoformat(start), date.fromisoformat(end))
         return [r.model_dump(mode="json") for r in records]
-    except NotImplementedError:
+    except Exception:
         return []

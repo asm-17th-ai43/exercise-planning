@@ -9,6 +9,15 @@ import datetime
 
 from schemas.models import MuscleFatigueState, ScheduleProposal, WorkoutSlot
 
+# 요일 키워드 → weekday 번호 (0=월, 6=일). 긴 문자열 우선 매칭.
+_DAY_KEYWORDS: dict[str, int] = {
+    "월요일": 0, "화요일": 1, "수요일": 2, "목요일": 3,
+    "금요일": 4, "토요일": 5, "일요일": 6,
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+    "friday": 4, "saturday": 5, "sunday": 6,
+    "월": 0, "화": 1, "수": 2, "목": 3, "금": 4, "토": 5, "일": 6,
+}
+
 _REACT_STEPS = ["get_calendar", "get_health", "get_workouts"]
 
 # feature_spec F5: 부위 7종
@@ -142,11 +151,23 @@ def _select_workout(
 
 # ── 노드 함수 ────────────────────────────────────────────────────────────────
 
+def _parse_target_weekday(text: str) -> int | None:
+    """사용자 입력에서 요일을 파싱해 weekday 번호(0=월, 6=일)를 반환. 없으면 None."""
+    text_lower = text.lower()
+    for keyword in sorted(_DAY_KEYWORDS, key=len, reverse=True):
+        if keyword in text_lower:
+            return _DAY_KEYWORDS[keyword]
+    return None
+
+
 def think_node(state: dict) -> dict:
     """다음에 호출할 Tool을 결정한다.
 
+    mode=="refine"이면 바로 refine 노드로 보낸다.
     5/5 stub: LLM 없이 하드코딩된 ReAct 순서. 5/8에 실제 LLM 판단으로 교체.
     """
+    if state.get("mode") == "refine":
+        return {"next_action": "refine"}
     called: list[str] = state.get("tools_called", [])
     for step in _REACT_STEPS:
         if step not in called:
@@ -253,5 +274,69 @@ def compose_schedule_node(state: dict) -> dict:
 
 
 def refine_node(state: dict) -> dict:
-    """멀티턴 재조정 노드. 5/7 구현 예정."""
-    raise NotImplementedError("5/7 구현 예정")
+    """멀티턴 재조정 노드.
+
+    사용자 피드백에서 요일을 파싱해 해당 날짜 슬롯만 교체한다.
+    나머지 슬롯과 fatigue_timeline은 그대로 유지 (KPI #4).
+    """
+    user_input: str = state.get("user_input", "")
+    proposal_dict = state.get("proposal")
+    if not proposal_dict:
+        return {}
+
+    proposal = ScheduleProposal.model_validate(proposal_dict)
+    target_weekday = _parse_target_weekday(user_input)
+
+    # 요일을 파악하지 못하면 기존 제안 그대로 반환
+    if target_weekday is None:
+        return {"proposal": proposal.model_dump(mode="json")}
+
+    today = datetime.date.today()
+    week_start = today - datetime.timedelta(days=today.weekday())
+    target_date = week_start + datetime.timedelta(days=target_weekday)
+
+    calendar: list[dict] = state.get("calendar_data", [])
+    health: list[dict] = state.get("health_data", [])
+    workouts: list[dict] = state.get("workouts_data", [])
+
+    fatigue = _compute_muscle_fatigue(workouts)
+    condition = _assess_condition(health)
+
+    busy = _busy_intervals(calendar, target_date)
+    free_windows = _find_free_windows(busy, target_date)
+
+    if not free_windows:
+        alt_start = datetime.datetime(
+            target_date.year, target_date.month, target_date.day, 7, 0
+        )
+        new_slot = WorkoutSlot(
+            start=alt_start,
+            end=alt_start + datetime.timedelta(minutes=10),
+            type="홈트",
+            target_muscles=["코어"],
+            intensity=1,
+            rationale="재조정 요청 + 빈 시간 없음 → 10분 대체 루틴",
+        )
+    else:
+        window_start, window_end = free_windows[0]
+        avail_min = int((window_end - window_start).total_seconds() / 60)
+        duration_min = min(_DEFAULT_DURATION_MIN, avail_min)
+        slot_end = window_start + datetime.timedelta(minutes=duration_min)
+        workout_type, target_muscles, intensity, rationale = _select_workout(
+            fatigue, condition, duration_min
+        )
+        new_slot = WorkoutSlot(
+            start=window_start,
+            end=slot_end,
+            type=workout_type,
+            target_muscles=target_muscles,
+            intensity=intensity,
+            rationale=f"재조정: {rationale}",
+        )
+
+    # 해당 날짜 슬롯만 교체, 나머지 유지
+    other_slots = [s for s in proposal.slots if s.start.date() != target_date]
+    new_slots = sorted(other_slots + [new_slot], key=lambda s: s.start)
+
+    updated = ScheduleProposal(slots=new_slots, fatigue_timeline=proposal.fatigue_timeline)
+    return {"proposal": updated.model_dump(mode="json")}

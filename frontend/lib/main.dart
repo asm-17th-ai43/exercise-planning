@@ -4,8 +4,12 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api/calendar_api.dart';
+import 'api/health_api.dart';
+import 'api/workouts_api.dart';
 import 'cards/calendar_card.dart';
-import 'cards/card_panel.dart';
+import 'cards/fatigue_radar_card.dart';
+import 'cards/health_card.dart';
+import 'cards/workouts_card.dart';
 import 'chat/chat_panel.dart';
 import 'design/app_theme.dart';
 import 'design/tokens/colors.dart';
@@ -14,6 +18,7 @@ import 'design/tokens/shadows.dart';
 import 'design/tokens/spacing.dart';
 import 'design/tokens/typography.dart';
 import 'env.dart';
+import 'models/muscle_fatigue_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +57,12 @@ class DashboardPage extends StatelessWidget {
       return const _ConfigMissingPage();
     }
 
-    final api = CalendarApi(Supabase.instance.client);
+    final client = Supabase.instance.client;
+    final apis = _DashboardApis(
+      calendar: CalendarApi(client),
+      health: HealthApi(client),
+      workouts: WorkoutsApi(client),
+    );
     final weekStart = _mondayOfThisWeek(DateTime.now());
 
     return Scaffold(
@@ -71,7 +81,7 @@ class DashboardPage extends StatelessWidget {
                   children: [
                     const _DashboardHeader(),
                     const SizedBox(height: AppSpacing.s6),
-                    _DashboardBody(api: api, weekStart: weekStart),
+                    _DashboardBody(apis: apis, weekStart: weekStart),
                   ],
                 ),
               );
@@ -81,6 +91,18 @@ class DashboardPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DashboardApis {
+  const _DashboardApis({
+    required this.calendar,
+    required this.health,
+    required this.workouts,
+  });
+
+  final CalendarApi calendar;
+  final HealthApi health;
+  final WorkoutsApi workouts;
 }
 
 DateTime _mondayOfThisWeek(DateTime now) {
@@ -169,9 +191,9 @@ class _GhostButton extends StatelessWidget {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({required this.api, required this.weekStart});
+  const _DashboardBody({required this.apis, required this.weekStart});
 
-  final CalendarApi api;
+  final _DashboardApis apis;
   final DateTime weekStart;
 
   @override
@@ -183,7 +205,7 @@ class _DashboardBody extends StatelessWidget {
           // 좌측 데이터 영역 (7/12 ≈ 0.58)
           Expanded(
             flex: 7,
-            child: _LeftColumn(api: api, weekStart: weekStart),
+            child: _LeftColumn(apis: apis, weekStart: weekStart),
           ),
           const SizedBox(width: AppSpacing.s5),
           // 우측 챗봇 영역 (5/12 ≈ 0.42) — Slice B: lib/chat/
@@ -198,9 +220,9 @@ class _DashboardBody extends StatelessWidget {
 }
 
 class _LeftColumn extends StatelessWidget {
-  const _LeftColumn({required this.api, required this.weekStart});
+  const _LeftColumn({required this.apis, required this.weekStart});
 
-  final CalendarApi api;
+  final _DashboardApis apis;
   final DateTime weekStart;
 
   @override
@@ -208,34 +230,20 @@ class _LeftColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CalendarCard(api: api, weekStart: weekStart),
+        CalendarCard(api: apis.calendar, weekStart: weekStart),
         const SizedBox(height: AppSpacing.s5),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
-            Expanded(
-              child: PlaceholderPanel(
-                title: '컨디션 점수',
-                icon: LucideIcons.heartPulse,
-                note: '5/6 · Health 카드',
-              ),
-            ),
-            SizedBox(width: AppSpacing.s5),
-            Expanded(
-              child: PlaceholderPanel(
-                title: '최근 운동 이력',
-                icon: LucideIcons.clock,
-                note: '5/6 · Workouts 카드',
-              ),
-            ),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: HealthCard(api: apis.health)),
+              const SizedBox(width: AppSpacing.s5),
+              Expanded(child: WorkoutsCard(api: apis.workouts)),
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.s5),
-        const PlaceholderPanel(
-          title: '부위별 피로도',
-          icon: LucideIcons.sparkles,
-          note: '5/6 · Fatigue 레이더 차트 (fl_chart RadarChart)',
-        ),
+        FatigueRadarCard(state: MuscleFatigueState.demo()),
       ],
     );
   }

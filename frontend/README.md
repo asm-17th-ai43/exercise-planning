@@ -27,29 +27,40 @@ flutter run -d chrome \
 ```
 frontend/
 ├── lib/
-│   ├── main.dart              레이아웃 셸 (헤더 + 7:5 컬럼)
-│   ├── env.dart               --dart-define 주입
+│   ├── main.dart                레이아웃 셸 (헤더 + 7:5 컬럼)
+│   ├── env.dart                 --dart-define 주입
 │   ├── api/
-│   │   └── calendar_api.dart  Supabase calendar_events 조회
-│   ├── models/
-│   │   └── calendar_event.dart   schemas/models.py 와 1:1
+│   │   ├── calendar_api.dart    Supabase calendar_events 조회
+│   │   ├── health_api.dart      Supabase health_snapshots 조회
+│   │   └── workouts_api.dart    Supabase workout_records 조회
+│   ├── models/                  schemas/models.py 와 1:1 매핑
+│   │   ├── calendar_event.dart
+│   │   ├── health_snapshot.dart
+│   │   ├── workout_record.dart
+│   │   └── muscle_fatigue_state.dart
 │   ├── cards/
-│   │   ├── card_panel.dart    공통 카드 패널 + Placeholder
-│   │   └── calendar_card.dart 이번 주 일정 카드
+│   │   ├── card_panel.dart      공통 카드 패널 + Placeholder
+│   │   ├── calendar_card.dart   이번 주 일정
+│   │   ├── health_card.dart     컨디션 점수
+│   │   ├── workouts_card.dart   최근 운동 이력
+│   │   └── fatigue_radar_card.dart 부위별 피로도 레이더
 │   ├── design/
-│   │   ├── app_theme.dart     ThemeData + Pretendard
-│   │   └── tokens/            colors/typography/spacing/radius/shadows
-│   └── chat/                  ★ B 슬라이스 (박장우)
+│   │   ├── app_theme.dart       ThemeData + Pretendard
+│   │   └── tokens/              colors/typography/spacing/radius/shadows
+│   └── chat/                    ★ B 슬라이스 (박장우)
 ├── test/
-│   └── calendar_event_test.dart
-└── web/index.html             Pretendard CDN preconnect
+│   ├── calendar_event_test.dart
+│   ├── health_snapshot_test.dart
+│   └── workout_record_test.dart
+└── web/index.html               Pretendard CDN preconnect
 ```
 
 ## 데이터 계약
 
 - **Supabase 직접 CRUD** — REST `/data/*` 없음. `supabase_flutter` SDK가 RLS·anon key로 직접 read.
 - 테이블: `calendar_events`, `health_snapshots`, `workout_records` (스키마는 [`schemas/models.py`](../schemas/models.py)와 1:1)
-- 컬럼명: `start`/`end`는 Postgres 예약어라 `start_at`/`end_at` 사용. `fromJson`에서 매핑.
+- 컬럼명: Postgres 예약어 충돌 회피로 `start_at`/`end_at` 사용 (`schemas/models.py`도 동일). Dart 모델은 `startAt`/`endAt`로 카멜케이스 매핑.
+- 도메인 모델은 `id: int?` 보유 — Supabase가 발급, 클라이언트 생성 시 `null`.
 - SSE 채팅(`POST /agent/chat`)은 B 슬라이스(`lib/chat/`).
 
 ## 개발 워크플로

@@ -1,0 +1,11 @@
+{
+  "name": "같은 부위 3일 연속 → 회피",
+  "description": "최근 3일 같은 muscle 그룹 운동. 피로도 누적된 부위에 해당 운동을 추천하지 않는지 검증 (KPI 2).",
+  "calendar": [],
+  "health": [],
+  "workouts": [],
+  "expected": {
+    "fatigued_muscles": [],
+    "must_not_target": []
+  }
+}

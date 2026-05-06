@@ -11,3 +11,6 @@ __pycache__/
 
 # MCP server config — per-developer (Supabase project ref, etc.)
 .mcp.json
+
+# OMC / ralph working state — per-developer
+.omc/

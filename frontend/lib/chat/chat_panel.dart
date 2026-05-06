@@ -1,0 +1,179 @@
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
+import '../design/tokens/colors.dart';
+import '../design/tokens/radius.dart';
+import '../design/tokens/shadows.dart';
+import '../design/tokens/spacing.dart';
+import '../design/tokens/typography.dart';
+import 'chat_controller.dart';
+import 'chat_message.dart';
+import 'widgets/chat_input.dart';
+import 'widgets/message_bubble.dart';
+
+/// Right-rail AI coach chat panel. Replaces A's `_ChatPlaceholderPanel`.
+/// Slice B owns this widget and everything it imports under `lib/chat/`.
+class ChatPanel extends StatefulWidget {
+  const ChatPanel({super.key});
+
+  @override
+  State<ChatPanel> createState() => _ChatPanelState();
+}
+
+class _ChatPanelState extends State<ChatPanel> {
+  late final ChatController _controller;
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = ChatController();
+    _controller.addListener(_onChange);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onChange);
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onChange() {
+    if (!mounted) return;
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.s5),
+      decoration: BoxDecoration(
+        color: AppColors.bgElevated1,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _ChatHeader(),
+          const SizedBox(height: AppSpacing.s4),
+          Expanded(
+            child: _controller.messages.isEmpty
+                ? const _EmptyState()
+                : _MessageList(
+                    messages: _controller.messages,
+                    scrollController: _scrollController,
+                  ),
+          ),
+          const SizedBox(height: AppSpacing.s3),
+          ChatInput(
+            enabled: !_controller.isStreaming,
+            onSubmit: _controller.send,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChatHeader extends StatelessWidget {
+  const _ChatHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.s2),
+          decoration: BoxDecoration(
+            color: AppColors.bgElevated2,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+          ),
+          child: Icon(
+            LucideIcons.bot,
+            size: 18,
+            color: AppColors.accentPrimary,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('AI 코치', style: AppTypography.h3),
+              Text(
+                '캘린더·컨디션·운동기록을 종합한 추천',
+                style: AppTypography.caption,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MessageList extends StatelessWidget {
+  const _MessageList({
+    required this.messages,
+    required this.scrollController,
+  });
+
+  final List<ChatMessage> messages;
+  final ScrollController scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      controller: scrollController,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
+      itemCount: messages.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s2),
+      itemBuilder: (_, i) => MessageBubble(message: messages[i]),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.sparkles,
+            size: 32,
+            color: AppColors.accentPrimaryGlow,
+          ),
+          const SizedBox(height: AppSpacing.s3),
+          Text(
+            '"이번 주 운동 추천해줘"',
+            style: AppTypography.body.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s1),
+          Text(
+            '메시지를 입력하면 코치가 응답합니다',
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

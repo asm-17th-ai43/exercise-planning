@@ -211,3 +211,102 @@ def test_compose_schedule_no_conflict_with_busy():
             # 슬롯이 busy 구간과 겹치지 않아야 함
             no_overlap = slot.end <= busy_start or slot.start >= busy_end
             assert no_overlap, f"충돌 발생: {slot.start}~{slot.end}"
+
+
+# --- 5/7 합격 기준: 멀티턴 재조정 ---
+
+from agent.nodes import _parse_target_weekday, refine_node
+
+
+def test_parse_target_weekday_full_name():
+    """'화요일' 파싱 → 1."""
+    assert _parse_target_weekday("화요일은 피곤할 것 같아") == 1
+
+
+def test_parse_target_weekday_short():
+    """'목' 파싱 → 3."""
+    assert _parse_target_weekday("목 운동 바꿔줘") == 3
+
+
+def test_parse_target_weekday_none():
+    """요일 없으면 None."""
+    assert _parse_target_weekday("운동 강도 낮춰줘") is None
+
+
+def test_refine_node_replaces_only_target_day():
+    """refine_node는 지정 요일 슬롯만 교체해야 한다 (KPI #4)."""
+    today = datetime.date.today()
+    week_start = today - datetime.timedelta(days=today.weekday())
+
+    # 초기 proposal 생성
+    initial_result = compose_schedule_node({"calendar_data": [], "health_data": [], "workouts_data": []})
+    proposal = ScheduleProposal.model_validate(initial_result["proposal"])
+    original_slots = {s.start.date(): s for s in proposal.slots}
+
+    # 화요일(weekday=1) 재조정
+    tuesday = week_start + datetime.timedelta(days=1)
+    state = {
+        "user_input": "화요일 운동 바꿔줘",
+        "proposal": initial_result["proposal"],
+        "calendar_data": [],
+        "health_data": [],
+        "workouts_data": [],
+    }
+    result = refine_node(state)
+    refined = ScheduleProposal.model_validate(result["proposal"])
+    refined_slots = {s.start.date(): s for s in refined.slots}
+
+    assert len(refined.slots) == 7, "슬롯 수가 7개여야 함"
+    for d, slot in original_slots.items():
+        if d == tuesday:
+            continue  # 화요일은 변경 허용
+        assert refined_slots[d].start == slot.start, f"{d}: 변경되면 안 되는 슬롯이 변경됨"
+
+
+def test_refine_node_unknown_day_returns_unchanged():
+    """요일을 파악 못하면 기존 proposal 그대로 반환."""
+    initial_result = compose_schedule_node({"calendar_data": [], "health_data": [], "workouts_data": []})
+    state = {
+        "user_input": "운동 강도 낮춰줘",
+        "proposal": initial_result["proposal"],
+        "calendar_data": [],
+        "health_data": [],
+        "workouts_data": [],
+    }
+    result = refine_node(state)
+    assert result["proposal"] == initial_result["proposal"]
+
+
+@pytest.mark.asyncio
+async def test_multiturn_second_call_is_refine_mode():
+    """같은 thread_id 두 번째 호출은 tool_call 없이 proposal만 emit해야 한다."""
+    tid = "multiturn-refine-mode-test"
+    # 1차 호출: 초기 스케줄
+    async for _ in run_agent_stream("이번 주 운동 짜줘", thread_id=tid):
+        pass
+
+    # 2차 호출: 재조정 (tool_call 없어야 함)
+    chunks = []
+    async for chunk in run_agent_stream("화요일은 피곤할 것 같아서 쉬고 싶어", thread_id=tid):
+        chunks.append(chunk)
+
+    types = [c.type for c in chunks]
+    assert "tool_call" not in types, f"재조정에서 tool_call이 나옴: {types}"
+    assert "proposal" in types, "재조정에서 proposal이 없음"
+    assert types[-1] == "done"
+
+
+@pytest.mark.asyncio
+async def test_multiturn_second_proposal_has_seven_slots():
+    """재조정 후 proposal도 7개 슬롯을 가져야 한다."""
+    tid = "multiturn-seven-slots-test"
+    async for _ in run_agent_stream("이번 주 운동 짜줘", thread_id=tid):
+        pass
+
+    second_proposal = None
+    async for chunk in run_agent_stream("화요일 운동 바꿔줘", thread_id=tid):
+        if chunk.type == "proposal":
+            second_proposal = chunk.payload
+
+    assert second_proposal is not None
+    assert len(second_proposal["slots"]) == 7

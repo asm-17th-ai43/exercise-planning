@@ -24,7 +24,7 @@ def update_calendar_event(event_id: str, patch: dict) -> CalendarEvent: ...
 def delete_calendar_event(event_id: str) -> None: ...
 ```
 
-`[start, end]`는 양 끝 포함. JSON 파일은 `data/`에서 읽고 쓴다.
+`[start, end]`는 양 끝 포함. Supabase 테이블에서 읽고 쓴다 (Agent 전용 접근 — Flutter는 Supabase SDK 직접 호출).
 
 ## 구현 가이드
 

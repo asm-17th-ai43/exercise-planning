@@ -65,7 +65,11 @@ class _ChatPanelState extends State<ChatPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _ChatHeader(),
+          _ChatHeader(
+            onReset: _controller.resetConversation,
+            canReset:
+                !_controller.isStreaming && _controller.messages.isNotEmpty,
+          ),
           const SizedBox(height: AppSpacing.s4),
           Expanded(
             child: _controller.messages.isEmpty
@@ -87,7 +91,10 @@ class _ChatPanelState extends State<ChatPanel> {
 }
 
 class _ChatHeader extends StatelessWidget {
-  const _ChatHeader();
+  const _ChatHeader({required this.onReset, required this.canReset});
+
+  final VoidCallback onReset;
+  final bool canReset;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +125,37 @@ class _ChatHeader extends StatelessWidget {
             ],
           ),
         ),
+        _ResetButton(onPressed: canReset ? onReset : null),
       ],
+    );
+  }
+}
+
+class _ResetButton extends StatelessWidget {
+  const _ResetButton({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final color =
+        enabled ? AppColors.textTertiary : AppColors.textTertiary.withValues(alpha: 0.4);
+
+    return Tooltip(
+      message: '새 대화 시작',
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.s2),
+          decoration: BoxDecoration(
+            color: AppColors.bgElevated2,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+          ),
+          child: Icon(LucideIcons.refreshCw, size: 16, color: color),
+        ),
+      ),
     );
   }
 }

@@ -10,6 +10,7 @@ import '../design/tokens/spacing.dart';
 import '../design/tokens/typography.dart';
 import '../models/health_snapshot.dart';
 import 'card_panel.dart';
+import 'card_states.dart';
 
 class HealthCard extends StatefulWidget {
   const HealthCard({super.key, required this.api});
@@ -26,8 +27,12 @@ class _HealthCardState extends State<HealthCard> {
   @override
   void initState() {
     super.initState();
-    _future = widget.api.getLatest();
+    _future = _load();
   }
+
+  Future<HealthSnapshot?> _load() => widget.api.getLatest();
+
+  void _retry() => setState(() => _future = _load());
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +43,17 @@ class _HealthCardState extends State<HealthCard> {
         future: _future,
         builder: (context, snapshot) {
           return switch (snapshot.connectionState) {
-            ConnectionState.waiting => const _LoadingDonut(),
-            _ when snapshot.hasError => _ErrorLine(
+            ConnectionState.waiting => const CardLoadingDonut(),
+            _ when snapshot.hasError => CardErrorState(
                 message: '컨디션을 불러오지 못했습니다',
                 detail: snapshot.error.toString(),
+                onRetry: _retry,
               ),
-            _ when snapshot.data == null => const _EmptyState(),
+            _ when snapshot.data == null => const CardEmptyState(
+                icon: LucideIcons.heartPulse,
+                message: '측정 데이터 없음',
+                hint: 'health_snapshots 시드를 INSERT 하면 표시됩니다',
+              ),
             _ => _DonutWithMeta(snapshot: snapshot.data!),
           };
         },
@@ -176,87 +186,6 @@ class _Meta extends StatelessWidget {
           style: AppTypography.caption.copyWith(color: AppColors.textTertiary),
         ),
       ],
-    );
-  }
-}
-
-class _LoadingDonut extends StatelessWidget {
-  const _LoadingDonut();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 144,
-      height: 144,
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.s4),
-      decoration: const BoxDecoration(
-        color: AppColors.bgElevated2,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s5),
-      child: Column(
-        children: [
-          Icon(
-            LucideIcons.heartPulse,
-            size: 22,
-            color: AppColors.textTertiary,
-          ),
-          const SizedBox(height: AppSpacing.s2),
-          Text(
-            '측정 데이터 없음',
-            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'health_snapshots 시드를 INSERT 하면 표시됩니다',
-            textAlign: TextAlign.center,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ErrorLine extends StatelessWidget {
-  const _ErrorLine({required this.message, required this.detail});
-
-  final String message;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            message,
-            style: AppTypography.body.copyWith(color: AppColors.statusDanger),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            detail,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style:
-                AppTypography.caption.copyWith(color: AppColors.textTertiary),
-          ),
-        ],
-      ),
     );
   }
 }

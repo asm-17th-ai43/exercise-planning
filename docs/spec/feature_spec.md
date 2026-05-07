@@ -54,7 +54,7 @@
   1. 카드에는 일자, 시작/종료 시각, 일정 제목이 표시된다.
   2. `is_busy=true`와 `false`가 시각적으로 구분된다 (색상 또는 아이콘).
   3. 일정이 0건이면 "이번 주 일정이 비어 있어요" 안내가 뜬다.
-  4. 데이터 소스는 `data/calendar.json` (실제 Google Calendar 미연동).
+  4. 데이터 소스는 Supabase `calendar_events` 테이블 (Flutter가 직접 조회. 실제 Google Calendar 미연동).
 - **담당 슬라이스**: A (FE 카드) + D/E (데이터·Tool)
 
 ### F2. 이번 주 컨디션 보기
@@ -64,7 +64,7 @@
 - **수용 기준**:
   1. 평균 수면 5시간 미만이면 "피로 누적" 배지가 카드에 표시된다.
   2. 활동시간이 7일 평균 30분 미만이면 "활동량 부족" 배지가 표시된다.
-  3. 데이터 소스는 `data/health.json` (실제 Apple Health 미연동).
+  3. 데이터 소스는 Supabase `health_snapshots` 테이블 (Flutter가 직접 조회. 실제 Apple Health 미연동).
 - **담당 슬라이스**: A (FE 카드) + D/E (데이터·Tool)
 
 ### F3. 최근 운동 이력 보기
@@ -74,7 +74,7 @@
 - **수용 기준**:
   1. 각 항목에 일자, 운동명, 시간(분), 강도(1~5), 대상 부위가 표시된다.
   2. 빈 기록은 "최근 운동 이력이 없어요"로 처리.
-  3. 데이터 소스는 `data/workouts.json`.
+  3. 데이터 소스는 Supabase `workout_records` 테이블 (Flutter가 직접 조회).
 - **담당 슬라이스**: A (FE 카드) + D/E (데이터·Tool)
 
 ### F4. 운동 스케줄 자동 추천 (★ 메인 기능)
@@ -118,7 +118,7 @@
 - **시스템 응답**: 추천 슬롯들이 `POST /data/calendar`로 1건씩 추가되고 일정 카드가 갱신된다 ("등록 완료" 토스트).
 - **수용 기준**:
   1. 추천이 없는 상태에서는 버튼이 비활성화 또는 숨김 처리된다.
-  2. 클릭 시 BE에 `create_calendar_event`가 호출되어 `data/calendar.json`에 슬롯이 추가된다.
+  2. 클릭 시 Flutter가 Supabase `calendar_events` 테이블에 직접 슬롯을 추가한다 (`create_calendar_event` 패턴).
   3. 등록 후 좌측 일정 카드(F1)가 새 일정을 보여준다 (refetch).
   4. 채팅 이력은 유지된다.
 - **담당 슬라이스**: B (FE 등록 버튼) + D (`create_calendar_event` Tool — F7 클릭 시 호출)

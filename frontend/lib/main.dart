@@ -48,22 +48,49 @@ class ExercisePlanningApp extends StatelessWidget {
   }
 }
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  late DateTime _weekStart;
+  late _DashboardApis _apis;
+  late SupabaseClient _client;
+
+  @override
+  void initState() {
+    super.initState();
+    _weekStart = _mondayOfThisWeek(DateTime.now());
+    if (Env.isConfigured) {
+      _client = Supabase.instance.client;
+      _apis = _DashboardApis(
+        calendar: CalendarApi(_client),
+        health: HealthApi(_client),
+        workouts: WorkoutsApi(_client),
+      );
+    }
+  }
+
+  void _shiftWeek(int weeks) {
+    setState(() {
+      _weekStart = _weekStart.add(Duration(days: 7 * weeks));
+    });
+  }
+
+  void _resetToThisWeek() {
+    setState(() {
+      _weekStart = _mondayOfThisWeek(DateTime.now());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     if (!Env.isConfigured) {
       return const _ConfigMissingPage();
     }
-
-    final client = Supabase.instance.client;
-    final apis = _DashboardApis(
-      calendar: CalendarApi(client),
-      health: HealthApi(client),
-      workouts: WorkoutsApi(client),
-    );
-    final weekStart = _mondayOfThisWeek(DateTime.now());
 
     return Scaffold(
       body: DecoratedBox(
@@ -79,9 +106,14 @@ class DashboardPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const _DashboardHeader(),
+                    _DashboardHeader(
+                      weekStart: _weekStart,
+                      onPrevWeek: () => _shiftWeek(-1),
+                      onNextWeek: () => _shiftWeek(1),
+                      onToday: _resetToThisWeek,
+                    ),
                     const SizedBox(height: AppSpacing.s6),
-                    _DashboardBody(apis: apis, weekStart: weekStart),
+                    _DashboardBody(apis: _apis, weekStart: _weekStart),
                   ],
                 ),
               );
@@ -111,10 +143,25 @@ DateTime _mondayOfThisWeek(DateTime now) {
 }
 
 class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader();
+  const _DashboardHeader({
+    required this.weekStart,
+    required this.onPrevWeek,
+    required this.onNextWeek,
+    required this.onToday,
+  });
+
+  final DateTime weekStart;
+  final VoidCallback onPrevWeek;
+  final VoidCallback onNextWeek;
+  final VoidCallback onToday;
 
   @override
   Widget build(BuildContext context) {
+    final thisWeekStart = _mondayOfThisWeek(DateTime.now());
+    final isThisWeek = weekStart.year == thisWeekStart.year &&
+        weekStart.month == thisWeekStart.month &&
+        weekStart.day == thisWeekStart.day;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -147,44 +194,86 @@ class _DashboardHeader extends StatelessWidget {
             ],
           ),
         ),
-        const _GhostButton(icon: LucideIcons.chevronLeft, label: '지난주'),
+        _GhostButton(
+          icon: LucideIcons.chevronLeft,
+          label: '지난주',
+          onTap: onPrevWeek,
+        ),
         const SizedBox(width: AppSpacing.s2),
-        const _GhostButton(icon: LucideIcons.chevronRight, label: '다음주'),
+        _GhostButton(
+          icon: LucideIcons.calendarDays,
+          label: '오늘',
+          onTap: isThisWeek ? null : onToday,
+          highlighted: isThisWeek,
+        ),
+        const SizedBox(width: AppSpacing.s2),
+        _GhostButton(
+          icon: LucideIcons.chevronRight,
+          label: '다음주',
+          onTap: onNextWeek,
+        ),
       ],
     );
   }
 }
 
 class _GhostButton extends StatelessWidget {
-  const _GhostButton({required this.icon, required this.label});
+  const _GhostButton({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.highlighted = false,
+  });
 
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s3,
-        vertical: AppSpacing.s2,
-      ),
-      decoration: BoxDecoration(
+    final isDisabled = onTap == null;
+    final fg = highlighted
+        ? AppColors.accentPrimary
+        : (isDisabled ? AppColors.textTertiary : AppColors.textSecondary);
+    final borderColor = highlighted
+        ? AppColors.accentPrimary.withValues(alpha: 0.4)
+        : AppColors.borderSubtle;
+    final bg = highlighted
+        ? AppColors.accentPrimary.withValues(alpha: 0.08)
+        : Colors.transparent;
+
+    return MouseRegion(
+      cursor:
+          isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.textSecondary),
-          const SizedBox(width: AppSpacing.s1),
-          Text(
-            label,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textSecondary,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s3,
+              vertical: AppSpacing.s2,
+            ),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: fg),
+                const SizedBox(width: AppSpacing.s1),
+                Text(
+                  label,
+                  style: AppTypography.caption.copyWith(color: fg),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

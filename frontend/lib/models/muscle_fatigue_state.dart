@@ -7,17 +7,18 @@ class MuscleFatigueState {
   final DateTime date;
   final Map<String, int> fatigue;
 
-  // 5/6 데모용 더미. schemas/models.py 의 fatigue 는 0~5 스케일.
+  // 데모용 더미. 키 순서·이름은 agent/nodes.py:15 의 `_MUSCLES` 와 일치.
   // 5/8 통합 시 C agent SSE proposal 청크 출력으로 대체.
   factory MuscleFatigueState.demo() => MuscleFatigueState(
         date: DateTime.now(),
         fatigue: const {
           '가슴': 3,
           '등': 2,
-          '어깨': 4,
-          '팔': 2,
-          '코어': 3,
           '하체': 1,
+          '어깨': 4,
+          '코어': 3,
+          '이두': 2,
+          '삼두': 2,
         },
       );
 

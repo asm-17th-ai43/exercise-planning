@@ -4,11 +4,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../api/workouts_api.dart';
 import '../design/tokens/colors.dart';
-import '../design/tokens/radius.dart';
 import '../design/tokens/spacing.dart';
 import '../design/tokens/typography.dart';
 import '../models/workout_record.dart';
 import 'card_panel.dart';
+import 'card_states.dart';
 
 class WorkoutsCard extends StatefulWidget {
   const WorkoutsCard({super.key, required this.api, this.limit = 5});
@@ -26,8 +26,13 @@ class _WorkoutsCardState extends State<WorkoutsCard> {
   @override
   void initState() {
     super.initState();
-    _future = widget.api.getRecent(limit: widget.limit);
+    _future = _load();
   }
+
+  Future<List<WorkoutRecord>> _load() =>
+      widget.api.getRecent(limit: widget.limit);
+
+  void _retry() => setState(() => _future = _load());
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +43,18 @@ class _WorkoutsCardState extends State<WorkoutsCard> {
         future: _future,
         builder: (context, snapshot) {
           return switch (snapshot.connectionState) {
-            ConnectionState.waiting => const _LoadingRows(),
-            _ when snapshot.hasError => _ErrorLine(
+            ConnectionState.waiting => const CardLoadingRows(iconSize: 40),
+            _ when snapshot.hasError => CardErrorState(
                 message: '운동 이력을 불러오지 못했습니다',
                 detail: snapshot.error.toString(),
+                onRetry: _retry,
               ),
-            _ => _RecordList(records: snapshot.data ?? const []),
+            _ when (snapshot.data ?? const []).isEmpty => const CardEmptyState(
+                icon: LucideIcons.dumbbell,
+                message: '최근 운동 이력 없음',
+                hint: 'workout_records 시드를 INSERT 하면 표시됩니다',
+              ),
+            _ => _RecordList(records: snapshot.data!),
           };
         },
       ),
@@ -58,27 +69,6 @@ class _RecordList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (records.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s4),
-        child: Row(
-          children: [
-            Icon(
-              LucideIcons.dumbbell,
-              size: 14,
-              color: AppColors.textTertiary,
-            ),
-            const SizedBox(width: AppSpacing.s2),
-            Text(
-              '최근 운동 이력 없음 — workout_records 시드 필요',
-              style:
-                  AppTypography.caption.copyWith(color: AppColors.textTertiary),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -178,91 +168,6 @@ class _RecordRow extends StatelessWidget {
                 style: AppTypography.dataMd.copyWith(fontSize: 14),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoadingRows extends StatelessWidget {
-  const _LoadingRows();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < 3; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.bgElevated2,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.s3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 12,
-                        width: double.infinity,
-                        color: AppColors.bgElevated2,
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        height: 10,
-                        width: 100,
-                        color: AppColors.bgElevated2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _ErrorLine extends StatelessWidget {
-  const _ErrorLine({required this.message, required this.detail});
-
-  final String message;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.s3),
-      decoration: BoxDecoration(
-        color: AppColors.statusDangerBg,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            message,
-            style: AppTypography.body.copyWith(
-              color: AppColors.statusDanger,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            detail,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style:
-                AppTypography.caption.copyWith(color: AppColors.textTertiary),
           ),
         ],
       ),

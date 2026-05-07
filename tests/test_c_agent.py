@@ -1,4 +1,6 @@
 """C 슬라이스 (이유준) — Agent 스모크 테스트."""
+import os
+
 import pytest
 
 from agent.graph import run_agent, run_agent_stream
@@ -310,3 +312,54 @@ async def test_multiturn_second_proposal_has_seven_slots():
 
     assert second_proposal is not None
     assert len(second_proposal["slots"]) == 7
+
+
+# --- 5/8 합격 기준: 실제 GPT 호출 ---
+
+_requires_key = pytest.mark.skipif(
+    not os.getenv("OPENAI_API_KEY"),
+    reason="OPENAI_API_KEY 없으면 skip",
+)
+
+
+@_requires_key
+@pytest.mark.asyncio
+async def test_llm_think_node_emits_tool_calls_in_order():
+    """실제 LLM이 ReAct 3단계를 순서대로 판단해야 한다."""
+    tool_calls = []
+    async for chunk in run_agent_stream("이번 주 운동 짜줘", thread_id="llm-react-test"):
+        if chunk.type == "tool_call":
+            tool_calls.append(chunk.payload["name"])
+
+    assert tool_calls == ["get_calendar", "get_health", "get_workouts"], (
+        f"LLM ReAct 순서 틀림: {tool_calls}"
+    )
+
+
+@_requires_key
+@pytest.mark.asyncio
+async def test_llm_response_includes_text_chunk():
+    """실제 GPT 응답 텍스트가 text 청크로 도달해야 한다 (5/8 end-to-end 기준)."""
+    text_chunks = []
+    async for chunk in run_agent_stream("이번 주 운동 짜줘", thread_id="llm-text-test"):
+        if chunk.type == "text":
+            text_chunks.append(chunk.payload.get("delta", ""))
+
+    assert text_chunks, "text 청크가 없음"
+    full_text = "".join(text_chunks)
+    assert len(full_text) > 10, f"텍스트가 너무 짧음: {full_text!r}"
+
+
+@_requires_key
+@pytest.mark.asyncio
+async def test_llm_full_flow_order():
+    """실제 LLM: tool_call(3) → text → proposal → done 순서."""
+    sequence = []
+    async for chunk in run_agent_stream("이번 주 운동 짜줘", thread_id="llm-order-test"):
+        sequence.append(chunk.type)
+
+    assert sequence.count("tool_call") == 3
+    assert "text" in sequence
+    assert "proposal" in sequence
+    assert sequence.index("text") < sequence.index("proposal"), "text가 proposal 앞에 와야 함"
+    assert sequence[-1] == "done"

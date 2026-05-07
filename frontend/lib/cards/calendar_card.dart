@@ -9,6 +9,7 @@ import '../design/tokens/spacing.dart';
 import '../design/tokens/typography.dart';
 import '../models/calendar_event.dart';
 import 'card_panel.dart';
+import 'card_states.dart';
 
 class CalendarCard extends StatefulWidget {
   const CalendarCard({
@@ -33,10 +34,20 @@ class _CalendarCardState extends State<CalendarCard> {
     _future = _load();
   }
 
+  @override
+  void didUpdateWidget(covariant CalendarCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.weekStart != widget.weekStart || oldWidget.api != widget.api) {
+      _future = _load();
+    }
+  }
+
   Future<List<CalendarEvent>> _load() {
     final end = widget.weekStart.add(const Duration(days: 7));
     return widget.api.getCalendar(widget.weekStart, end);
   }
+
+  void _retry() => setState(() => _future = _load());
 
   @override
   Widget build(BuildContext context) {
@@ -53,12 +64,18 @@ class _CalendarCardState extends State<CalendarCard> {
         future: _future,
         builder: (context, snapshot) {
           return switch (snapshot.connectionState) {
-            ConnectionState.waiting => const _LoadingSkeleton(),
-            _ when snapshot.hasError => _ErrorLine(
+            ConnectionState.waiting => const CardLoadingRows(iconSize: 44),
+            _ when snapshot.hasError => CardErrorState(
                 message: '일정을 불러오지 못했습니다',
                 detail: snapshot.error.toString(),
+                onRetry: _retry,
               ),
-            _ => _EventList(events: snapshot.data ?? const []),
+            _ when (snapshot.data ?? const []).isEmpty => const CardEmptyState(
+                icon: LucideIcons.calendarOff,
+                message: '이번 주 등록된 일정이 없습니다',
+                hint: 'calendar_events 시드를 INSERT 하면 표시됩니다',
+              ),
+            _ => _EventList(events: snapshot.data!),
           };
         },
       ),
@@ -79,28 +96,6 @@ class _EventList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (events.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s4),
-        child: Row(
-          children: [
-            Icon(
-              LucideIcons.calendarOff,
-              size: 16,
-              color: AppColors.textTertiary,
-            ),
-            const SizedBox(width: AppSpacing.s2),
-            Text(
-              '이번 주 등록된 일정이 없습니다',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     final today = DateTime.now();
     final dayLabel = DateFormat('E', 'ko_KR');
     final timeLabel = DateFormat('HH:mm');
@@ -218,101 +213,6 @@ class _EventRow extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoadingSkeleton extends StatelessWidget {
-  const _LoadingSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < 3; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.bgElevated2,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.s4),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 12,
-                        width: double.infinity,
-                        color: AppColors.bgElevated2,
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        height: 10,
-                        width: 80,
-                        color: AppColors.bgElevated2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _ErrorLine extends StatelessWidget {
-  const _ErrorLine({required this.message, required this.detail});
-
-  final String message;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.s3),
-      decoration: BoxDecoration(
-        color: AppColors.statusDangerBg,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                LucideIcons.alertCircle,
-                size: 16,
-                color: AppColors.statusDanger,
-              ),
-              const SizedBox(width: AppSpacing.s2),
-              Text(
-                message,
-                style: AppTypography.body.copyWith(
-                  color: AppColors.statusDanger,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s2),
-          Text(
-            detail,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style:
-                AppTypography.caption.copyWith(color: AppColors.textTertiary),
           ),
         ],
       ),

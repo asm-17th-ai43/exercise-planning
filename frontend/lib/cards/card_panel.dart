@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../design/tokens/colors.dart';
 import '../design/tokens/radius.dart';
@@ -83,49 +82,3 @@ class CardPanel extends StatelessWidget {
   }
 }
 
-class PlaceholderPanel extends StatelessWidget {
-  const PlaceholderPanel({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.note,
-    this.fillHeight = false,
-  });
-
-  final String title;
-  final IconData icon;
-  final String note;
-  final bool fillHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    return CardPanel(
-      title: title,
-      icon: icon,
-      fillHeight: fillHeight,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s5),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                LucideIcons.sparkles,
-                size: 18,
-                color: AppColors.textTertiary,
-              ),
-              const SizedBox(height: AppSpacing.s2),
-              Text(
-                note,
-                textAlign: TextAlign.center,
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

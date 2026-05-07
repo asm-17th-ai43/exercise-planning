@@ -6,6 +6,7 @@ ReAct 패턴: 1) 일정 확인 → 2) 건강 확인 → 3) 운동 기록 확인 
 from __future__ import annotations
 
 import datetime
+from collections.abc import AsyncIterator
 
 from schemas.models import MuscleFatigueState, ScheduleProposal, WorkoutSlot
 
@@ -37,6 +38,25 @@ def _this_week_range() -> tuple[str, str]:
 
 
 # ── 스케줄 도출 헬퍼 ──────────────────────────────────────────────────────────
+
+def _compute_proposal_fatigue(
+    slots: list,  # list[WorkoutSlot]
+    before_date: datetime.date,
+) -> dict[str, float]:
+    """제안된 슬롯 중 before_date 이전 슬롯들의 누적 피로도를 계산한다.
+
+    compose_schedule_node의 running_fatigue와 동일한 가중치(intensity * 0.5)를 사용해
+    refine_node에서도 이미 제안된 슬롯의 부위 피로도를 반영한다.
+    """
+    fatigue: dict[str, float] = {m: 0.0 for m in _MUSCLES}
+    for slot in slots:
+        if slot.start.date() >= before_date:
+            continue
+        for m in slot.target_muscles:
+            if m in fatigue:
+                fatigue[m] = min(5.0, fatigue[m] + slot.intensity * 0.5)
+    return fatigue
+
 
 def _compute_muscle_fatigue(workouts: list[dict]) -> dict[str, float]:
     """최근 7일 운동 기록으로 부위별 피로도(0~5)를 계산한다."""
@@ -81,8 +101,8 @@ def _busy_intervals(
         if not ev.get("is_busy", True):
             continue
         try:
-            start = datetime.datetime.fromisoformat(ev["start_at"])
-            end = datetime.datetime.fromisoformat(ev["end_at"])
+            start = datetime.datetime.fromisoformat(ev["start_at"]).replace(tzinfo=None)
+            end = datetime.datetime.fromisoformat(ev["end_at"]).replace(tzinfo=None)
         except (KeyError, ValueError):
             continue
         if start.date() == target_date:
@@ -116,17 +136,24 @@ def _find_free_windows(
 
 
 def _select_workout(
-    fatigue: dict[str, float], condition: dict, slot_min: int
+    fatigue: dict[str, float],
+    condition: dict,
+    slot_min: int,
+    excluded_muscles: frozenset[str] = frozenset(),
 ) -> tuple[str, list[str], int, str]:
-    """피로도·컨디션 기반으로 (운동유형, 대상부위, 강도, 설명)을 결정한다."""
+    """피로도·컨디션 기반으로 (운동유형, 대상부위, 강도, 설명)을 결정한다.
+
+    excluded_muscles: refine 시 현재 슬롯 부위를 넘겨 다른 선택을 강제한다.
+    """
     base_intensity = 2 if condition["fatigue_flag"] else 3
 
     if slot_min < 20:
         return ("홈트", ["코어"], max(1, base_intensity - 1), "짧은 시간 → 코어 홈트")
 
     # 피로도 낮은 부위 우선 선택 (KPI #2: 피로도 높은 부위 회피)
+    # excluded_muscles는 refine에서 현재 슬롯과 다른 부위를 선택하기 위해 제외
     high_fatigue = [m for m, f in fatigue.items() if f >= 4.0]
-    eligible = [m for m in _MUSCLES if fatigue.get(m, 0) < 4.0]
+    eligible = [m for m in _MUSCLES if fatigue.get(m, 0) < 4.0 and m not in excluded_muscles]
 
     if not eligible:
         return ("러닝", ["하체", "코어"], base_intensity, "전신 피로 → 유산소 권장")
@@ -163,11 +190,13 @@ def _parse_target_weekday(text: str) -> int | None:
 def think_node(state: dict) -> dict:
     """다음에 호출할 Tool을 결정한다.
 
-    mode=="refine"이면 바로 refine 노드로 보낸다.
-    5/5 stub: LLM 없이 하드코딩된 ReAct 순서. 5/8에 실제 LLM 판단으로 교체.
+    mode=="refine"이면 refine 노드로 보내고,
+    그 외에는 get_calendar → get_health → get_workouts → compose 고정 순서로 진행.
+    LLM 판단은 항상 동일한 순서를 반환하므로 hardcoded로 유지 (응답 속도 최적화).
     """
     if state.get("mode") == "refine":
         return {"next_action": "refine"}
+
     called: list[str] = state.get("tools_called", [])
     for step in _REACT_STEPS:
         if step not in called:
@@ -273,6 +302,60 @@ def compose_schedule_node(state: dict) -> dict:
     return {"proposal": proposal.model_dump(mode="json")}
 
 
+def _format_slots(slots: list[dict]) -> str:
+    """슬롯 목록을 LLM 프롬프트용 텍스트로 변환한다."""
+    lines = []
+    for s in slots:
+        date_str = s["start"][:10]
+        time_str = f"{s['start'][11:16]}~{s['end'][11:16]}"
+        muscles = ", ".join(s.get("target_muscles", []))
+        rationale = s.get("rationale", "")
+        lines.append(f"- {date_str} {time_str}: {s['type']} ({muscles}) — {rationale}")
+    return "\n".join(lines)
+
+
+async def generate_proposal_summary(
+    proposal: dict,
+    user_input: str,
+    api_key: str,
+    is_refine: bool = False,
+    prior_proposal: dict | None = None,
+) -> AsyncIterator[str]:
+    """제안된 스케줄을 한국어 텍스트로 토큰 단위로 스트리밍한다. LLM 호출은 이 파일에만.
+
+    is_refine=True + prior_proposal 제공 시 REFINE_PROMPT로 실제 변경 내용을 설명한다 (F6 AC3).
+    schemas/CLAUDE.md: text 청크는 "LLM 토큰 단위 응답 (delta 누적은 FE가 처리)".
+    """
+    from langchain_core.messages import HumanMessage, SystemMessage
+    from langchain_openai import ChatOpenAI
+
+    from agent.prompts import REFINE_PROMPT, SYSTEM_PROMPT
+
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3, api_key=api_key)
+
+    current_text = _format_slots(proposal.get("slots", []))
+
+    if is_refine and prior_proposal is not None:
+        previous_text = _format_slots(prior_proposal.get("slots", []))
+        prompt = REFINE_PROMPT.format(
+            user_feedback=user_input,
+            previous_proposal=previous_text,
+            updated_proposal=current_text,
+        )
+    else:
+        prompt = (
+            f"사용자 요청: {user_input}\n\n"
+            f"이번 주 운동 스케줄:\n{current_text}\n\n"
+            "위 스케줄을 따뜻하고 격려하는 톤으로 2~3문장으로 소개해 주세요. 한국어로."
+        )
+
+    async for chunk in llm.astream([
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=prompt),
+    ]):
+        yield chunk.content
+
+
 def refine_node(state: dict) -> dict:
     """멀티턴 재조정 노드.
 
@@ -295,11 +378,24 @@ def refine_node(state: dict) -> dict:
     week_start = today - datetime.timedelta(days=today.weekday())
     target_date = week_start + datetime.timedelta(days=target_weekday)
 
+    # target_date를 제외한 나머지 슬롯 (피로도 계산 + 최종 조합에 모두 사용)
+    other_slots = [s for s in proposal.slots if s.start.date() != target_date]
+
+    # 현재 슬롯 부위를 파악해 refine 선택에서 제외 → "바꿔줘" 요청이 실제로 다른 결과를 냄
+    current_slot = next((s for s in proposal.slots if s.start.date() == target_date), None)
+    excluded_muscles = frozenset(current_slot.target_muscles) if current_slot else frozenset()
+
     calendar: list[dict] = state.get("calendar_data", [])
     health: list[dict] = state.get("health_data", [])
     workouts: list[dict] = state.get("workouts_data", [])
 
-    fatigue = _compute_muscle_fatigue(workouts)
+    # DB 기록 피로도 + 이미 제안된 슬롯(target_date 이전)의 누적 피로도를 합산
+    base_fatigue = _compute_muscle_fatigue(workouts)
+    proposal_fatigue = _compute_proposal_fatigue(other_slots, target_date)
+    fatigue = {
+        m: min(5.0, base_fatigue.get(m, 0.0) + proposal_fatigue.get(m, 0.0))
+        for m in _MUSCLES
+    }
     condition = _assess_condition(health)
 
     busy = _busy_intervals(calendar, target_date)
@@ -323,7 +419,7 @@ def refine_node(state: dict) -> dict:
         duration_min = min(_DEFAULT_DURATION_MIN, avail_min)
         slot_end = window_start + datetime.timedelta(minutes=duration_min)
         workout_type, target_muscles, intensity, rationale = _select_workout(
-            fatigue, condition, duration_min
+            fatigue, condition, duration_min, excluded_muscles=excluded_muscles
         )
         new_slot = WorkoutSlot(
             start=window_start,
@@ -334,8 +430,6 @@ def refine_node(state: dict) -> dict:
             rationale=f"재조정: {rationale}",
         )
 
-    # 해당 날짜 슬롯만 교체, 나머지 유지
-    other_slots = [s for s in proposal.slots if s.start.date() != target_date]
     new_slots = sorted(other_slots + [new_slot], key=lambda s: s.start)
 
     updated = ScheduleProposal(slots=new_slots, fatigue_timeline=proposal.fatigue_timeline)

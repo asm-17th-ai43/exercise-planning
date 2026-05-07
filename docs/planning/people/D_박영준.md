@@ -9,8 +9,7 @@ calendar + workouts CRUD Tool 8개 + FastAPI 라우터 위임. **Tech Lead** —
 ## 주 디렉토리·파일
 
 - `tools/data_tools.py` — `get_/create_/update_/delete_calendar_event` + `_workout` (CRUD 8개)
-- `data/calendar.json`, `data/workouts.json` — 데모 페르소나 데이터
-- `backend/api/data.py` — 자기 도메인 라우터(현재 501 stub)에 위임 채우기
+- `data/calendar.json`, `data/workouts.json` — 데모 페르소나 데이터 (Supabase 시딩 입력용)
 - (Tech Lead 부수업) main 일일 점검, 통합 디버깅 보조
 
 ## 합의 (이미 락)
@@ -24,7 +23,7 @@ calendar + workouts CRUD Tool 8개 + FastAPI 라우터 위임. **Tech Lead** —
 | 날짜 | 할 일 | 합격 기준 |
 |---|---|---|
 | **5/4 (월)** | `data/calendar.json` 더미 5건 + `tools.get_calendar` JSON 파싱 1차 / **(Tech Lead)** 5명 PR 머지 상태 EOD 점검 | `pytest`에서 1주 범위 호출 시 리스트 반환 |
-| **5/5 (화)** | `get_calendar` 완성 + `tools.get_workouts` JSON 파싱 + `create_calendar_event` write 1개 / Swagger `/docs`에서 GET 1개 200 검증 | `POST /data/calendar`로 새 이벤트 추가 |
+| **5/5 (화)** | `get_calendar` 완성 + `tools.get_workouts` Supabase 연결 + `create_calendar_event` write 1개 | Supabase에 새 이벤트 추가 확인 |
 | **5/6 (수)** | `update_/delete_calendar_event` + `_workout` CRUD 일부 / 1주치 더미 데이터 보강 (충돌·빈시간 케이스) | calendar/workouts 모두 4종 CRUD 200/204 |
 | **5/7 (목)** | calendar/workouts CRUD 마무리 / Tech Lead — A·B·C·E 슬라이스 진행률 점검 (PR 리뷰 밀린 것 핑) | 본인 8 CRUD 모두 동작 / 팀 PR 정체 0 |
 | **5/8 (금)** ★ | write Tool atomic 파일 갱신 (임시 파일 → `os.replace`) / B의 F7 호출 검증 / Tech Lead — 통합 디버깅 보조 | 등록 버튼 → `calendar.json` 무손실 갱신, end-to-end 1회 성공 |
@@ -49,7 +48,7 @@ calendar + workouts CRUD Tool 8개 + FastAPI 라우터 위임. **Tech Lead** —
 - `tools/CLAUDE.md` ← 본인 슬라이스 (CRUD 시그니처, atomic write)
 - `data/CLAUDE.md` ← scenarios/ 구조 + 페르소나
 - `schemas/CLAUDE.md` ← Pydantic 모델 (`CalendarEvent`, `WorkoutRecord`)
-- `backend/CLAUDE.md` ← `/data/*` 라우터 위임 패턴
+- `backend/CLAUDE.md` ← FastAPI 구조 (Flutter는 Supabase 직접 호출, Agent만 tools/ 경유)
 - `agent/CLAUDE.md` ← C가 어떻게 Tool을 호출하는지 (`@tool` 래퍼)
 
 ## 흔한 함정

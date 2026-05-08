@@ -8,13 +8,19 @@ import '../design/tokens/spacing.dart';
 import '../design/tokens/typography.dart';
 import 'chat_controller.dart';
 import 'chat_message.dart';
+import 'proposal_notifier.dart';
 import 'widgets/chat_input.dart';
 import 'widgets/message_bubble.dart';
 
 /// Right-rail AI coach chat panel. Replaces A's `_ChatPlaceholderPanel`.
 /// Slice B owns this widget and everything it imports under `lib/chat/`.
 class ChatPanel extends StatefulWidget {
-  const ChatPanel({super.key});
+  const ChatPanel({super.key, this.proposalNotifier});
+
+  /// Optional fan-out: when an agent proposal arrives, forward it to this
+  /// notifier so dashboard cards (radar, calendar) can react. Owner is
+  /// responsible for disposing.
+  final ProposalNotifier? proposalNotifier;
 
   @override
   State<ChatPanel> createState() => _ChatPanelState();
@@ -27,7 +33,7 @@ class _ChatPanelState extends State<ChatPanel> {
   @override
   void initState() {
     super.initState();
-    _controller = ChatController();
+    _controller = ChatController(proposalNotifier: widget.proposalNotifier);
     _controller.addListener(_onChange);
   }
 

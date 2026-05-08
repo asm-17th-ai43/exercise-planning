@@ -1,23 +1,29 @@
 {
   "name": "꽉 찬 일주일 → 10분 대체 루틴",
-  "description": "1주 내내 일정이 꽉 찬 캘린더. is_busy=true 시간이 거의 전부라 빈 시간이 없을 때 10분짜리 홈트·계단·스트레칭을 제안하는지 검증 (KPI 3).",
+  "description": "1주 내내 06:00~22:00 빈 틈 없이 busy. agent/nodes.py의 _WORKOUT_HOUR_START=6, _WORKOUT_HOUR_END=22, _MIN_SLOT_MIN=30 기준으로 free_windows가 0이 되어야 10분 홈트 대체 루틴이 나옴 (KPI 3).",
   "calendar": [
-    {"start_at": "2026-05-04T09:00:00", "end_at": "2026-05-04T18:00:00", "title": "업무", "is_busy": true},
-    {"start_at": "2026-05-04T19:00:00", "end_at": "2026-05-04T22:00:00", "title": "야근 (장애 대응)", "is_busy": true},
-    {"start_at": "2026-05-05T09:00:00", "end_at": "2026-05-05T18:00:00", "title": "업무", "is_busy": true},
-    {"start_at": "2026-05-05T18:30:00", "end_at": "2026-05-05T21:00:00", "title": "사내 스터디", "is_busy": true},
-    {"start_at": "2026-05-06T09:00:00", "end_at": "2026-05-06T18:00:00", "title": "업무", "is_busy": true},
-    {"start_at": "2026-05-06T19:00:00", "end_at": "2026-05-06T22:00:00", "title": "야근", "is_busy": true},
-    {"start_at": "2026-05-07T09:00:00", "end_at": "2026-05-07T18:00:00", "title": "업무", "is_busy": true},
-    {"start_at": "2026-05-07T18:30:00", "end_at": "2026-05-07T21:30:00", "title": "동기 모임", "is_busy": true},
-    {"start_at": "2026-05-08T09:00:00", "end_at": "2026-05-08T18:00:00", "title": "업무", "is_busy": true},
-    {"start_at": "2026-05-08T19:00:00", "end_at": "2026-05-08T22:00:00", "title": "야근", "is_busy": true},
-    {"start_at": "2026-05-09T10:00:00", "end_at": "2026-05-09T14:00:00", "title": "병원 검진", "is_busy": true},
-    {"start_at": "2026-05-09T15:00:00", "end_at": "2026-05-09T18:00:00", "title": "가족 모임", "is_busy": true},
-    {"start_at": "2026-05-09T19:00:00", "end_at": "2026-05-09T21:00:00", "title": "저녁 약속", "is_busy": true},
-    {"start_at": "2026-05-10T09:00:00", "end_at": "2026-05-10T12:00:00", "title": "집 청소", "is_busy": true},
-    {"start_at": "2026-05-10T13:00:00", "end_at": "2026-05-10T17:00:00", "title": "사이드 프로젝트", "is_busy": true},
-    {"start_at": "2026-05-10T18:00:00", "end_at": "2026-05-10T21:00:00", "title": "저녁 약속", "is_busy": true}
+    {"start_at": "2026-05-04T06:00:00", "end_at": "2026-05-04T18:00:00", "title": "업무 (출근 포함)", "is_busy": true},
+    {"start_at": "2026-05-04T18:00:00", "end_at": "2026-05-04T22:00:00", "title": "야근 (장애 대응)", "is_busy": true},
+
+    {"start_at": "2026-05-05T06:00:00", "end_at": "2026-05-05T18:00:00", "title": "업무", "is_busy": true},
+    {"start_at": "2026-05-05T18:00:00", "end_at": "2026-05-05T22:00:00", "title": "사내 스터디 + 야식", "is_busy": true},
+
+    {"start_at": "2026-05-06T06:00:00", "end_at": "2026-05-06T18:00:00", "title": "업무", "is_busy": true},
+    {"start_at": "2026-05-06T18:00:00", "end_at": "2026-05-06T22:00:00", "title": "야근", "is_busy": true},
+
+    {"start_at": "2026-05-07T06:00:00", "end_at": "2026-05-07T18:00:00", "title": "업무", "is_busy": true},
+    {"start_at": "2026-05-07T18:00:00", "end_at": "2026-05-07T22:00:00", "title": "회식", "is_busy": true},
+
+    {"start_at": "2026-05-08T06:00:00", "end_at": "2026-05-08T18:00:00", "title": "업무", "is_busy": true},
+    {"start_at": "2026-05-08T18:00:00", "end_at": "2026-05-08T22:00:00", "title": "야근", "is_busy": true},
+
+    {"start_at": "2026-05-09T06:00:00", "end_at": "2026-05-09T13:00:00", "title": "병원 검진", "is_busy": true},
+    {"start_at": "2026-05-09T13:00:00", "end_at": "2026-05-09T18:00:00", "title": "가족 모임", "is_busy": true},
+    {"start_at": "2026-05-09T18:00:00", "end_at": "2026-05-09T22:00:00", "title": "저녁 약속", "is_busy": true},
+
+    {"start_at": "2026-05-10T06:00:00", "end_at": "2026-05-10T12:00:00", "title": "집 청소 + 세탁", "is_busy": true},
+    {"start_at": "2026-05-10T12:00:00", "end_at": "2026-05-10T17:00:00", "title": "사이드 프로젝트", "is_busy": true},
+    {"start_at": "2026-05-10T17:00:00", "end_at": "2026-05-10T22:00:00", "title": "집안일 + 저녁", "is_busy": true}
   ],
   "health": [
     {"date": "2026-05-04", "sleep_hours": 7.0, "activity_minutes": 40, "resting_hr": 60},
@@ -32,6 +38,7 @@
   "expected": {
     "should_propose_short_routine": true,
     "max_slot_minutes": 10,
+    "all_slots_alternative": true,
     "routine_types_any_of": ["홈트", "스트레칭", "계단", "맨몸"],
     "no_busy_time_conflict": true,
     "all_days_have_slot": true

@@ -136,7 +136,11 @@ class ChatController extends ChangeNotifier {
 
   static String _newThreadId() {
     final micros = DateTime.now().microsecondsSinceEpoch;
-    final rand = _rng.nextInt(1 << 32).toRadixString(16);
+    // 1 << 32 overflows to 0 on Flutter Web (JS) → Random.nextInt throws
+    // RangeError. Two 30-bit picks give us 60 bits of entropy and stay safe
+    // on every platform.
+    final rand = (_rng.nextInt(1 << 30).toRadixString(16)) +
+        _rng.nextInt(1 << 30).toRadixString(16);
     return 'fe-$micros-$rand';
   }
 

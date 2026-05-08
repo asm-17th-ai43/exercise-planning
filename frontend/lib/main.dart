@@ -306,27 +306,41 @@ class _DashboardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 좌측 데이터 영역 (7/12 ≈ 0.58)
-          Expanded(
-            flex: 7,
-            child: _LeftColumn(
-              apis: apis,
-              weekStart: weekStart,
-              proposalNotifier: proposalNotifier,
+    // ChatPanel 내부 ListView(=viewport)는 intrinsic 높이를 산출하지 못해서
+    // IntrinsicHeight + Row(stretch) 로 묶으면 transcript 가 길어지는 순간
+    // RenderViewport assertion 으로 트리가 폭주한다. 대신 좌측 카드 더미를
+    // 한 번 측정해 그 높이를 우측 ChatPanel 에 tight 로 강제한다 — 좌측은
+    // intrinsic 으로 안전하게 측정 가능하고, 우측은 이미 정해진 높이만 받으므로
+    // ListView 가 잘 동작한다.
+    final left = _LeftColumn(
+      apis: apis,
+      weekStart: weekStart,
+      proposalNotifier: proposalNotifier,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 7, child: left),
+            const SizedBox(width: AppSpacing.s5),
+            Expanded(
+              flex: 5,
+              // 좌측이 차지할 높이의 근사치 — 페이지 viewport 높이를 상한으로
+              // 두면 짧은 좌측에서도 채팅이 너무 길어지지 않고, 긴 좌측에서는
+              // 좌측이 자연스럽게 더 커진 만큼 채팅이 같이 자란다.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.hasBoundedHeight
+                      ? constraints.maxHeight
+                      : MediaQuery.of(context).size.height,
+                ),
+                child: ChatPanel(proposalNotifier: proposalNotifier),
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.s5),
-          // 우측 챗봇 영역 (5/12 ≈ 0.42) — Slice B: lib/chat/
-          Expanded(
-            flex: 5,
-            child: ChatPanel(proposalNotifier: proposalNotifier),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }

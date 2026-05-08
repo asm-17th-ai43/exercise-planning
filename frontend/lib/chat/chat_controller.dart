@@ -6,16 +6,19 @@ import 'package:flutter/foundation.dart';
 import 'chat_chunk.dart';
 import 'chat_client.dart';
 import 'chat_message.dart';
+import 'proposal_notifier.dart';
 
 /// Drives the chat panel: holds the transcript, accumulates streaming deltas,
 /// and persists `thread_id` across turns so multi-turn refinement (5/7) works
 /// without further plumbing.
 class ChatController extends ChangeNotifier {
-  ChatController({ChatClient? client})
+  ChatController({ChatClient? client, ProposalNotifier? proposalNotifier})
       : _client = client ?? ChatClient(),
+        _proposalNotifier = proposalNotifier,
         _threadId = _newThreadId();
 
   final ChatClient _client;
+  final ProposalNotifier? _proposalNotifier;
   final List<ChatMessage> _messages = [];
   // Seeded per-controller so each browser session/tab gets its own LangGraph
   // checkpoint bucket. Without this, the agent falls back to "default-thread"
@@ -77,7 +80,9 @@ class ChatController extends ChangeNotifier {
         assistant.toolCallNote = _toolLabel(name);
         notifyListeners();
       case ChatChunkType.proposal:
-        assistant.proposal = ScheduleProposal.fromJson(chunk.payload);
+        final proposal = ScheduleProposal.fromJson(chunk.payload);
+        assistant.proposal = proposal;
+        _proposalNotifier?.update(proposal);
         notifyListeners();
       case ChatChunkType.done:
         // Server echoes back the thread_id we sent (or its fallback). Trust it

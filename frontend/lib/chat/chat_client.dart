@@ -12,12 +12,24 @@ import 'chat_chunk.dart';
 /// so we drive the stream manually via `http.Client.send` and parse
 /// `data: <json>\n\n` frames as they arrive.
 class ChatClient {
-  ChatClient({http.Client? httpClient, String? baseUrl})
-      : _http = httpClient ?? http.Client(),
-        _baseUrl = baseUrl ?? Env.backendBaseUrl;
+  ChatClient({
+    http.Client? httpClient,
+    String? baseUrl,
+    int maxConnectRetries = 2,
+    Duration initialBackoff = const Duration(milliseconds: 250),
+  })  : _http = httpClient ?? http.Client(),
+        _baseUrl = baseUrl ?? Env.backendBaseUrl,
+        _maxConnectRetries = maxConnectRetries,
+        _initialBackoff = initialBackoff;
 
   final http.Client _http;
   final String _baseUrl;
+  // Retries cover the connect-time window only (DNS/refused/5xx before any
+  // chunk arrives). Once the SSE body starts, mid-stream drops surface as a
+  // truncated transcript — re-sending the same message would risk duplicate
+  // tool calls and a second proposal.
+  final int _maxConnectRetries;
+  final Duration _initialBackoff;
 
   /// Open a stream and yield [ChatChunk] as the server emits them.
   ///
@@ -28,21 +40,12 @@ class ChatClient {
     String? threadId,
   }) async* {
     final uri = Uri.parse('$_baseUrl/agent/chat');
-    final request = http.Request('POST', uri)
-      ..headers['Content-Type'] = 'application/json'
-      ..headers['Accept'] = 'text/event-stream'
-      ..body = jsonEncode({
-        'message': message,
-        if (threadId != null) 'thread_id': threadId,
-      });
+    final body = jsonEncode({
+      'message': message,
+      if (threadId != null) 'thread_id': threadId,
+    });
 
-    final response = await _http.send(request);
-    if (response.statusCode != 200) {
-      final body = await response.stream.bytesToString();
-      throw ChatTransportException(
-        'agent/chat ${response.statusCode}: $body',
-      );
-    }
+    final response = await _connectWithRetry(uri, body);
 
     // sse-starlette emits `data: <json>\n\n`. Comments (`: ping`) and unknown
     // headers are ignored. Frames are delimited by a blank line.
@@ -75,6 +78,39 @@ class ChatClient {
         yield ChatChunk.fromJson(decoded);
       }
     }
+  }
+
+  Future<http.StreamedResponse> _connectWithRetry(Uri uri, String body) async {
+    Object? lastError;
+    for (var attempt = 0; attempt <= _maxConnectRetries; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(_initialBackoff * (1 << (attempt - 1)));
+      }
+      try {
+        final request = http.Request('POST', uri)
+          ..headers['Content-Type'] = 'application/json'
+          ..headers['Accept'] = 'text/event-stream'
+          ..body = body;
+
+        final response = await _http.send(request);
+        if (response.statusCode == 200) return response;
+
+        // 4xx are usually our fault (bad payload) — don't burn retries on
+        // them. 5xx and 408/429 plausibly recover.
+        final code = response.statusCode;
+        final retriable = code >= 500 || code == 408 || code == 429;
+        final errBody = await response.stream.bytesToString();
+        lastError = ChatTransportException('agent/chat $code: $errBody');
+        if (!retriable) throw lastError;
+      } on ChatTransportException {
+        rethrow;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError is Exception
+        ? lastError as Exception
+        : ChatTransportException('agent/chat connect failed: $lastError');
   }
 
   void dispose() => _http.close();

@@ -94,46 +94,4 @@ void main() {
       );
     });
   });
-
-  group('MuscleFatigueState.fromJsonList', () {
-    test('decodes a list payload identical to repeated fromJson calls', () {
-      final rows = [
-        {
-          'date': '2026-05-08',
-          'fatigue': {'가슴': 3, '등': 2},
-        },
-        {
-          'date': '2026-05-09',
-          'fatigue': {'가슴': 4, '등': 1},
-        },
-      ];
-
-      final result = MuscleFatigueState.fromJsonList(rows);
-
-      expect(result, hasLength(2));
-      expect(result[0].date, DateTime(2026, 5, 8));
-      expect(result[0].fatigue, {'가슴': 3, '등': 2});
-      expect(result[1].date, DateTime(2026, 5, 9));
-      expect(result[1].fatigue, {'가슴': 4, '등': 1});
-    });
-
-    test('returns empty list when given empty input', () {
-      expect(MuscleFatigueState.fromJsonList(const []), isEmpty);
-    });
-
-    test('coerces num values (double) to int', () {
-      final rows = [
-        {
-          'date': '2026-05-08',
-          // Pydantic 의 model_dump(mode="json") 가 int 로 보내지만, 일부 JSON
-          // 디코더는 정수 0~5 도 double 로 줄 수 있어 toInt() 경로 검증.
-          'fatigue': {'가슴': 3.0, '등': 2.0},
-        }
-      ];
-
-      final result = MuscleFatigueState.fromJsonList(rows);
-
-      expect(result.first.fatigue, {'가슴': 3, '등': 2});
-    });
-  });
 }

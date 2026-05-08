@@ -87,15 +87,6 @@ class MuscleFatigueState {
     );
   }
 
-  /// SSE proposal payload 의 `fatigue_timeline` 배열을 그대로 디코드.
-  /// `ScheduleProposal.fromJson` 이 timeline 필드를 받으면 호출함 (B 답 받은 뒤).
-  static List<MuscleFatigueState> fromJsonList(List<dynamic> rows) {
-    return rows
-        .cast<Map<String, dynamic>>()
-        .map(MuscleFatigueState.fromJson)
-        .toList(growable: false);
-  }
-
   static DateTime _atMidnight(DateTime dt) =>
       DateTime(dt.year, dt.month, dt.day);
 

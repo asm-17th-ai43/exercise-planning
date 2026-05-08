@@ -11,6 +11,7 @@ import 'cards/fatigue_radar_card.dart';
 import 'cards/health_card.dart';
 import 'cards/workouts_card.dart';
 import 'chat/chat_panel.dart';
+import 'chat/proposal_notifier.dart';
 import 'design/app_theme.dart';
 import 'design/tokens/colors.dart';
 import 'design/tokens/radius.dart';
@@ -59,6 +60,10 @@ class _DashboardPageState extends State<DashboardPage> {
   late DateTime _weekStart;
   late _DashboardApis _apis;
   late SupabaseClient _client;
+  // Single source of truth for the latest agent proposal. ChatController fans
+  // proposals out into this notifier (see lib/chat/), and FatigueRadarCard
+  // listens so the radar reflects the agent's projected timeline.
+  final _proposalNotifier = ProposalNotifier();
 
   @override
   void initState() {
@@ -72,6 +77,12 @@ class _DashboardPageState extends State<DashboardPage> {
         workouts: WorkoutsApi(_client),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _proposalNotifier.dispose();
+    super.dispose();
   }
 
   void _shiftWeek(int weeks) {
@@ -113,7 +124,11 @@ class _DashboardPageState extends State<DashboardPage> {
                       onToday: _resetToThisWeek,
                     ),
                     const SizedBox(height: AppSpacing.s6),
-                    _DashboardBody(apis: _apis, weekStart: _weekStart),
+                    _DashboardBody(
+                      apis: _apis,
+                      weekStart: _weekStart,
+                      proposalNotifier: _proposalNotifier,
+                    ),
                   ],
                 ),
               );
@@ -244,8 +259,7 @@ class _GhostButton extends StatelessWidget {
         : Colors.transparent;
 
     return MouseRegion(
-      cursor:
-          isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      cursor: isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -280,10 +294,15 @@ class _GhostButton extends StatelessWidget {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({required this.apis, required this.weekStart});
+  const _DashboardBody({
+    required this.apis,
+    required this.weekStart,
+    required this.proposalNotifier,
+  });
 
   final _DashboardApis apis;
   final DateTime weekStart;
+  final ProposalNotifier proposalNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -294,13 +313,17 @@ class _DashboardBody extends StatelessWidget {
           // 좌측 데이터 영역 (7/12 ≈ 0.58)
           Expanded(
             flex: 7,
-            child: _LeftColumn(apis: apis, weekStart: weekStart),
+            child: _LeftColumn(
+              apis: apis,
+              weekStart: weekStart,
+              proposalNotifier: proposalNotifier,
+            ),
           ),
           const SizedBox(width: AppSpacing.s5),
           // 우측 챗봇 영역 (5/12 ≈ 0.42) — Slice B: lib/chat/
-          const Expanded(
+          Expanded(
             flex: 5,
-            child: ChatPanel(),
+            child: ChatPanel(proposalNotifier: proposalNotifier),
           ),
         ],
       ),
@@ -309,10 +332,15 @@ class _DashboardBody extends StatelessWidget {
 }
 
 class _LeftColumn extends StatelessWidget {
-  const _LeftColumn({required this.apis, required this.weekStart});
+  const _LeftColumn({
+    required this.apis,
+    required this.weekStart,
+    required this.proposalNotifier,
+  });
 
   final _DashboardApis apis;
   final DateTime weekStart;
+  final ProposalNotifier proposalNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -332,8 +360,31 @@ class _LeftColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.s5),
-        FatigueRadarCard(state: MuscleFatigueState.demo()),
+        _LiveFatigueRadar(notifier: proposalNotifier),
       ],
+    );
+  }
+}
+
+/// Listens to [ProposalNotifier] and feeds the latest agent-proposed fatigue
+/// state into [FatigueRadarCard]. Falls back to [MuscleFatigueState.demo]
+/// before the first proposal arrives so the radar is never empty.
+class _LiveFatigueRadar extends StatelessWidget {
+  const _LiveFatigueRadar({required this.notifier});
+
+  final ProposalNotifier notifier;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: notifier,
+      builder: (context, _) {
+        final timeline = notifier.latest?.fatigueTimeline;
+        final state = (timeline != null && timeline.isNotEmpty)
+            ? timeline.first
+            : MuscleFatigueState.demo();
+        return FatigueRadarCard(state: state);
+      },
     );
   }
 }

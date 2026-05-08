@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/muscle_fatigue_state.dart';
+
 enum ChatRole { user, assistant }
 
 /// Single recommended workout slot inside a [ScheduleProposal].
@@ -38,16 +40,25 @@ class WorkoutSlot {
 
 @immutable
 class ScheduleProposal {
-  const ScheduleProposal({required this.slots});
+  const ScheduleProposal({
+    required this.slots,
+    required this.fatigueTimeline,
+  });
 
   final List<WorkoutSlot> slots;
+  final List<MuscleFatigueState> fatigueTimeline;
 
   factory ScheduleProposal.fromJson(Map<String, dynamic> json) {
     final rawSlots = (json['slots'] as List?) ?? const [];
+    final rawTimeline = (json['fatigue_timeline'] as List?) ?? const [];
     return ScheduleProposal(
       slots: rawSlots
           .cast<Map<String, dynamic>>()
           .map(WorkoutSlot.fromJson)
+          .toList(growable: false),
+      fatigueTimeline: rawTimeline
+          .cast<Map<String, dynamic>>()
+          .map(MuscleFatigueState.fromJson)
           .toList(growable: false),
     );
   }

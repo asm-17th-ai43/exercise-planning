@@ -108,9 +108,8 @@ class ChatClient {
         lastError = e;
       }
     }
-    throw lastError is Exception
-        ? lastError as Exception
-        : ChatTransportException('agent/chat connect failed: $lastError');
+    if (lastError is Exception) throw lastError;
+    throw ChatTransportException('agent/chat connect failed: $lastError');
   }
 
   void dispose() => _http.close();

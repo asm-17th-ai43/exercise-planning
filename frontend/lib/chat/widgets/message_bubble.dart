@@ -8,49 +8,122 @@ import '../../design/tokens/typography.dart';
 import '../chat_message.dart';
 import 'proposal_card.dart';
 
-class MessageBubble extends StatelessWidget {
+class MessageBubble extends StatefulWidget {
   const MessageBubble({super.key, required this.message});
 
   final ChatMessage message;
 
   @override
+  State<MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<MessageBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entrance;
+
+  @override
+  void initState() {
+    super.initState();
+    _entrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _entrance.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final message = widget.message;
     final isUser = message.role == ChatRole.user;
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
-    final bubbleColor =
-        isUser ? AppColors.accentSecondary.withValues(alpha: 0.18) : AppColors.bgElevated2;
-    final borderColor = isUser ? AppColors.accentSecondaryGlow : AppColors.borderSubtle;
+    final bubbleColor = isUser
+        ? AppColors.accentSecondary.withValues(alpha: 0.22)
+        : AppColors.bgElevated2;
+    final borderColor =
+        isUser ? AppColors.accentSecondaryGlow : AppColors.borderSubtle;
 
-    return Align(
-      alignment: alignment,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Column(
-          crossAxisAlignment:
-              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            if (!isUser && (message.toolCallNote?.isNotEmpty ?? false))
-              _ToolCallChip(label: message.toolCallNote!),
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: AppSpacing.s2 / 2),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.s4,
-                vertical: AppSpacing.s3,
-              ),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: borderColor),
-              ),
-              child: _BubbleBody(message: message),
-            ),
-            if (message.proposal != null)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.s2),
-                child: ProposalCard(proposal: message.proposal!),
-              ),
-          ],
+    final fade = CurvedAnimation(parent: _entrance, curve: Curves.easeOut);
+    final slide = Tween<Offset>(
+      begin: const Offset(0, 0.18),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entrance, curve: Curves.easeOutCubic));
+
+    final column = Column(
+      crossAxisAlignment:
+          isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        if (!isUser && (message.toolCallNote?.isNotEmpty ?? false))
+          _ToolCallChip(label: message.toolCallNote!),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: AppSpacing.s2 / 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: AppSpacing.s3,
+          ),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: borderColor),
+          ),
+          child: _BubbleBody(message: message),
         ),
+        if (message.proposal != null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s2),
+            child: ProposalCard(proposal: message.proposal!),
+          ),
+      ],
+    );
+
+    return FadeTransition(
+      opacity: fade,
+      child: SlideTransition(
+        position: slide,
+        child: Align(
+          alignment: alignment,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: isUser
+                ? column
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _AssistantAvatar(),
+                      const SizedBox(width: AppSpacing.s2),
+                      Flexible(child: column),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AssistantAvatar extends StatelessWidget {
+  const _AssistantAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: AppColors.bgElevated2,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Icon(
+        LucideIcons.bot,
+        size: 12,
+        color: AppColors.accentPrimary,
       ),
     );
   }

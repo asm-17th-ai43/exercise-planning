@@ -7,7 +7,7 @@ SYSTEM_PROMPT = """당신은 사용자의 전문적이고 따뜻한 퍼스널 �
      - CalendarEvent 필드: start_at, end_at (ISO 8601), title, is_busy
      - is_busy=true인 시간대에는 운동을 배치하지 마세요
   2) get_health로 최근 수면·활동량 확인
-     - 수면 5시간 미만 누적 시 강도 1단계 하향
+     - 수면 5.5시간 미만 누적 시 강도 1단계 하향
   3) get_workouts로 최근 운동 기록과 부위별 피로도 확인
      - 피로도 4 이상 부위는 해당 부위 운동 회피
 

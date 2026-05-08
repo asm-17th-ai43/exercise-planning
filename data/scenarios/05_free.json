@@ -15,10 +15,10 @@
     {"date": "2026-05-07", "sleep_hours": 7.3, "activity_minutes": 42, "resting_hr": 59}
   ],
   "workouts": [
-    {"date": "2026-05-02", "type": "헬스", "duration_min": 60, "muscles": ["가슴", "삼두"], "intensity": 4},
-    {"date": "2026-05-03", "type": "러닝", "duration_min": 35, "muscles": ["하체", "코어"], "intensity": 3},
-    {"date": "2026-05-04", "type": "헬스", "duration_min": 55, "muscles": ["등", "이두"], "intensity": 3},
-    {"date": "2026-05-05", "type": "헬스", "duration_min": 50, "muscles": ["가슴", "삼두"], "intensity": 4}
+    {"date": "2026-05-04", "type": "헬스", "duration_min": 60, "muscles": ["가슴", "삼두"], "intensity": 4},
+    {"date": "2026-05-05", "type": "러닝", "duration_min": 35, "muscles": ["하체", "코어"], "intensity": 3},
+    {"date": "2026-05-06", "type": "헬스", "duration_min": 55, "muscles": ["가슴", "삼두"], "intensity": 5},
+    {"date": "2026-05-07", "type": "헬스", "duration_min": 50, "muscles": ["가슴", "삼두"], "intensity": 4}
   ],
   "expected": {
     "high_fatigue_muscles": ["가슴", "삼두"],

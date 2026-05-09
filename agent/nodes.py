@@ -101,7 +101,7 @@ def call_tool_node(state: dict) -> dict:
 async def compose_schedule_node(state: dict) -> dict:
     """수집한 데이터를 LLM에 전달해 이번 주 ScheduleProposal을 생성한다."""
     from langchain_core.messages import HumanMessage, SystemMessage
-    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import ChatOpenAI
 
     from agent.prompts import COMPOSE_PROMPT, SYSTEM_PROMPT
 
@@ -113,12 +113,13 @@ async def compose_schedule_node(state: dict) -> dict:
     today = datetime.date.today()
     week_start = today - datetime.timedelta(days=today.weekday())
 
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY가 설정되지 않았습니다.")
+        raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다.")
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0, google_api_key=api_key)
-    structured_llm = llm.with_structured_output(ScheduleProposal)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=api_key)
+    # datetime/date 필드가 포함돼 있어 strict JSON schema 모드가 거부함 → function_calling 사용
+    structured_llm = llm.with_structured_output(ScheduleProposal, method="function_calling")
 
     prompt = COMPOSE_PROMPT.format(
         today=today.isoformat(),
@@ -139,7 +140,7 @@ async def compose_schedule_node(state: dict) -> dict:
 async def refine_node(state: dict) -> dict:
     """멀티턴 재조정 노드. 사용자 피드백을 LLM에 전달해 해당 날짜 슬롯만 교체한다."""
     from langchain_core.messages import HumanMessage, SystemMessage
-    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import ChatOpenAI
 
     from agent.prompts import REFINE_SCHEDULE_PROMPT, SYSTEM_PROMPT
 
@@ -164,13 +165,13 @@ async def refine_node(state: dict) -> dict:
     else:
         target_date_hint = "미지정 — 피드백에서 날짜를 판단하여 변경"
 
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY가 설정되지 않았습니다.")
+        raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다.")
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0, google_api_key=api_key)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=api_key)
     # LLM에는 slots만 요청 — fatigue_timeline은 LLM이 빠뜨리는 경우가 잦으므로 Python에서 복원
-    structured_llm = llm.with_structured_output(_SlotsOnly)
+    structured_llm = llm.with_structured_output(_SlotsOnly, method="function_calling")
 
     # slots만 담은 proposal JSON (fatigue_timeline 제거 → 불필요한 복사 혼동 방지)
     slots_only_json = json.dumps({"slots": proposal_dict.get("slots", [])}, ensure_ascii=False)
@@ -221,11 +222,11 @@ async def generate_proposal_summary(
     schemas/CLAUDE.md: text 청크는 "LLM 토큰 단위 응답 (delta 누적은 FE가 처리)".
     """
     from langchain_core.messages import HumanMessage, SystemMessage
-    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import ChatOpenAI
 
     from agent.prompts import REFINE_PROMPT, SYSTEM_PROMPT
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=api_key)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3, api_key=api_key)
 
     current_text = _format_slots(proposal.get("slots", []))
 

@@ -8,6 +8,7 @@ import '../design/tokens/radius.dart';
 import '../design/tokens/spacing.dart';
 import '../design/tokens/typography.dart';
 import '../models/calendar_event.dart';
+import 'calendar_reload_notifier.dart';
 import 'card_panel.dart';
 import 'card_states.dart';
 
@@ -16,10 +17,14 @@ class CalendarCard extends StatefulWidget {
     super.key,
     required this.api,
     required this.weekStart,
+    this.reloadNotifier,
   });
 
   final CalendarApi api;
   final DateTime weekStart;
+  // Optional pub/sub: bumped by Slice B after inserting events from a
+  // proposal so this card refetches without a full page reload.
+  final CalendarReloadNotifier? reloadNotifier;
 
   @override
   State<CalendarCard> createState() => _CalendarCardState();
@@ -32,19 +37,35 @@ class _CalendarCardState extends State<CalendarCard> {
   void initState() {
     super.initState();
     _future = _load();
+    widget.reloadNotifier?.addListener(_onExternalReload);
   }
 
   @override
   void didUpdateWidget(covariant CalendarCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.reloadNotifier != widget.reloadNotifier) {
+      oldWidget.reloadNotifier?.removeListener(_onExternalReload);
+      widget.reloadNotifier?.addListener(_onExternalReload);
+    }
     if (oldWidget.weekStart != widget.weekStart || oldWidget.api != widget.api) {
       _future = _load();
     }
   }
 
+  @override
+  void dispose() {
+    widget.reloadNotifier?.removeListener(_onExternalReload);
+    super.dispose();
+  }
+
   Future<List<CalendarEvent>> _load() {
     final end = widget.weekStart.add(const Duration(days: 7));
     return widget.api.getCalendar(widget.weekStart, end);
+  }
+
+  void _onExternalReload() {
+    if (!mounted) return;
+    setState(() => _future = _load());
   }
 
   void _retry() => setState(() => _future = _load());

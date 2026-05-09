@@ -26,6 +26,14 @@ class CalendarEvent {
     );
   }
 
+  /// Insert payload — drops `id` so Postgres assigns it.
+  Map<String, dynamic> toInsertJson() => {
+        'start_at': startAt.toIso8601String(),
+        'end_at': endAt.toIso8601String(),
+        'title': title,
+        'is_busy': isBusy,
+      };
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

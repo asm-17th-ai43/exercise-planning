@@ -20,4 +20,16 @@ class CalendarApi {
         .map(CalendarEvent.fromJson)
         .toList(growable: false);
   }
+
+  /// Insert a single event and return the row Postgres echoed back (with the
+  /// assigned `id`). Used by Slice B's "캘린더에 등록" action on agent
+  /// proposals.
+  Future<CalendarEvent> createEvent(CalendarEvent event) async {
+    final row = await _client
+        .from('calendar_events')
+        .insert(event.toInsertJson())
+        .select()
+        .single();
+    return CalendarEvent.fromJson(row);
+  }
 }

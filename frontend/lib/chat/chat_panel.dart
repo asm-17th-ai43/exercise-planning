@@ -182,13 +182,42 @@ class _MessageList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
       itemCount: messages.length,
       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s2),
-      itemBuilder: (_, i) => MessageBubble(message: messages[i]),
+      // ValueKey on message.id keeps the entrance animation tied to the
+      // bubble's lifetime — without it, list reuse can replay the fade-in
+      // on streaming text deltas.
+      itemBuilder: (_, i) => MessageBubble(
+        key: ValueKey(messages[i].id),
+        message: messages[i],
+      ),
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends StatefulWidget {
   const _EmptyState();
+
+  @override
+  State<_EmptyState> createState() => _EmptyStateState();
+}
+
+class _EmptyStateState extends State<_EmptyState>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -196,10 +225,20 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            LucideIcons.sparkles,
-            size: 32,
-            color: AppColors.accentPrimaryGlow,
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, child) {
+              final t = Curves.easeInOut.transform(_pulse.value);
+              return Opacity(
+                opacity: 0.55 + 0.45 * t,
+                child: Transform.scale(scale: 0.96 + 0.08 * t, child: child),
+              );
+            },
+            child: Icon(
+              LucideIcons.sparkles,
+              size: 32,
+              color: AppColors.accentPrimaryGlow,
+            ),
           ),
           const SizedBox(height: AppSpacing.s3),
           Text(

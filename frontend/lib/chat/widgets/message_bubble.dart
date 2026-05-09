@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../api/calendar_api.dart';
+import '../../cards/calendar_reload_notifier.dart';
 import '../../design/tokens/colors.dart';
 import '../../design/tokens/radius.dart';
 import '../../design/tokens/spacing.dart';
@@ -9,9 +11,18 @@ import '../chat_message.dart';
 import 'proposal_card.dart';
 
 class MessageBubble extends StatefulWidget {
-  const MessageBubble({super.key, required this.message});
+  const MessageBubble({
+    super.key,
+    required this.message,
+    this.calendarApi,
+    this.calendarReload,
+  });
 
   final ChatMessage message;
+  // Forwarded to ProposalCard so the "캘린더에 등록" button can call Supabase
+  // and bump the calendar card. Both nullable for unit tests.
+  final CalendarApi? calendarApi;
+  final CalendarReloadNotifier? calendarReload;
 
   @override
   State<MessageBubble> createState() => _MessageBubbleState();
@@ -75,7 +86,11 @@ class _MessageBubbleState extends State<MessageBubble>
         if (message.proposal != null)
           Padding(
             padding: const EdgeInsets.only(top: AppSpacing.s2),
-            child: ProposalCard(proposal: message.proposal!),
+            child: ProposalCard(
+              proposal: message.proposal!,
+              calendarApi: widget.calendarApi,
+              calendarReload: widget.calendarReload,
+            ),
           ),
       ],
     );

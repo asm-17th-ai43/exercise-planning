@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../api/calendar_api.dart';
+import '../cards/calendar_reload_notifier.dart';
 import '../design/tokens/colors.dart';
 import '../design/tokens/radius.dart';
 import '../design/tokens/shadows.dart';
@@ -15,12 +17,22 @@ import 'widgets/message_bubble.dart';
 /// Right-rail AI coach chat panel. Replaces A's `_ChatPlaceholderPanel`.
 /// Slice B owns this widget and everything it imports under `lib/chat/`.
 class ChatPanel extends StatefulWidget {
-  const ChatPanel({super.key, this.proposalNotifier});
+  const ChatPanel({
+    super.key,
+    this.proposalNotifier,
+    this.calendarApi,
+    this.calendarReload,
+  });
 
   /// Optional fan-out: when an agent proposal arrives, forward it to this
   /// notifier so dashboard cards (radar, calendar) can react. Owner is
   /// responsible for disposing.
   final ProposalNotifier? proposalNotifier;
+  // ProposalCard's "캘린더에 등록" button needs the Supabase wrapper to insert
+  // events and a reload notifier to ask the calendar card to refetch. Both
+  // optional so unit tests can render the panel headless.
+  final CalendarApi? calendarApi;
+  final CalendarReloadNotifier? calendarReload;
 
   @override
   State<ChatPanel> createState() => _ChatPanelState();
@@ -83,6 +95,8 @@ class _ChatPanelState extends State<ChatPanel> {
                 : _MessageList(
                     messages: _controller.messages,
                     scrollController: _scrollController,
+                    calendarApi: widget.calendarApi,
+                    calendarReload: widget.calendarReload,
                   ),
           ),
           const SizedBox(height: AppSpacing.s3),
@@ -170,10 +184,14 @@ class _MessageList extends StatelessWidget {
   const _MessageList({
     required this.messages,
     required this.scrollController,
+    this.calendarApi,
+    this.calendarReload,
   });
 
   final List<ChatMessage> messages;
   final ScrollController scrollController;
+  final CalendarApi? calendarApi;
+  final CalendarReloadNotifier? calendarReload;
 
   @override
   Widget build(BuildContext context) {
@@ -182,12 +200,14 @@ class _MessageList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
       itemCount: messages.length,
       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s2),
-      // ValueKey on message.id keeps the entrance animation tied to the
-      // bubble's lifetime — without it, list reuse can replay the fade-in
-      // on streaming text deltas.
+      // ValueKey ties each MessageBubble to its message id so ListView reuse
+      // doesn't (a) replay the entrance fade-in on streaming text deltas or
+      // (b) wipe ProposalCard's "등록 완료" state mid-rebuild.
       itemBuilder: (_, i) => MessageBubble(
         key: ValueKey(messages[i].id),
         message: messages[i],
+        calendarApi: calendarApi,
+        calendarReload: calendarReload,
       ),
     );
   }

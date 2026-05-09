@@ -1,6 +1,7 @@
 """LangGraph StateGraph 골격 + 진입점. 담당: C(이유준)."""
 from __future__ import annotations
 
+import asyncio
 import datetime
 import os
 from collections.abc import AsyncIterator
@@ -68,7 +69,10 @@ graph = _builder.compile(checkpointer=checkpointer)
 # --- 진입점 ---
 
 def run_agent(user_input: str, session_state: dict) -> AgentResponse:
-    """비스트림 진입점 — 테스트·단순 호출용."""
+    """비스트림 진입점 — 테스트·단순 호출용.
+
+    compose_schedule_node/refine_node가 async이므로 ainvoke를 asyncio.run으로 실행.
+    """
     config = {"configurable": {"thread_id": "test-sync"}}
     initial: AgentState = {
         "user_input": user_input,
@@ -81,7 +85,7 @@ def run_agent(user_input: str, session_state: dict) -> AgentResponse:
         "workouts_data": [],
         "proposal": None,
     }
-    result = graph.invoke(initial, config)
+    result = asyncio.run(graph.ainvoke(initial, config))
     proposal_dict = result.get("proposal")
     proposal = ScheduleProposal.model_validate(proposal_dict) if proposal_dict else None
     return AgentResponse(

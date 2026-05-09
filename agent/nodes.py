@@ -135,25 +135,83 @@ def _find_free_windows(
     return free
 
 
+def _parse_user_intent(user_input: str) -> dict:
+    """사용자 입력에서 운동 의도를 파싱한다.
+
+    반환 키:
+      restrict_muscles: list[str] | None  — 이 부위만 사용 ("X만", "X 집중")
+      force_rest: bool                    — 가볍게 쉬기 요청
+      intensity_cap: int | None           — 최대 강도 제한
+    """
+    text = user_input.lower()
+
+    rest_kw = ["쉬게", "쉬고 싶", "쉬어", "휴식", "아무것도", "운동 하지 말", "운동하지 말", "쉬자"]
+    force_rest = any(k in text for k in rest_kw)
+
+    mentioned = [m for m in _MUSCLES if m in text]
+
+    restrict_muscles: list[str] | None = None
+    if mentioned and not force_rest:
+        restrict_kw = ["집중", "위주", "만 하", "만해", "만 해"]
+        has_restrict = any(k in text for k in restrict_kw)
+        if not has_restrict:
+            for m in mentioned:
+                if f"{m}만" in text or f"{m} 만" in text:
+                    has_restrict = True
+                    break
+        if has_restrict:
+            restrict_muscles = mentioned
+
+    intensity_cap: int | None = None
+    if any(k in text for k in ["피곤", "힘들", "무리", "살살", "가볍게", "쉽게", "지쳐"]):
+        intensity_cap = 2
+    if force_rest:
+        intensity_cap = 1
+
+    return {
+        "restrict_muscles": restrict_muscles,
+        "force_rest": force_rest,
+        "intensity_cap": intensity_cap,
+    }
+
+
 def _select_workout(
     fatigue: dict[str, float],
     condition: dict,
     slot_min: int,
     excluded_muscles: frozenset[str] = frozenset(),
+    user_intent: dict | None = None,
 ) -> tuple[str, list[str], int, str]:
-    """피로도·컨디션 기반으로 (운동유형, 대상부위, 강도, 설명)을 결정한다.
+    """피로도·컨디션·사용자 의도 기반으로 (운동유형, 대상부위, 강도, 설명)을 결정한다.
 
     excluded_muscles: refine 시 현재 슬롯 부위를 넘겨 다른 선택을 강제한다.
+    user_intent: _parse_user_intent() 결과. None이면 의도 없음으로 처리.
     """
+    intent = user_intent or {}
     base_intensity = 2 if condition["fatigue_flag"] else 3
+
+    if intent.get("intensity_cap") is not None:
+        base_intensity = min(base_intensity, intent["intensity_cap"])
+
+    if intent.get("force_rest"):
+        return ("휴식", ["코어"], 1, "사용자 요청: 가볍게 쉬는 날")
 
     if slot_min < 20:
         return ("홈트", ["코어"], max(1, base_intensity - 1), "짧은 시간 → 코어 홈트")
 
     # 피로도 낮은 부위 우선 선택 (KPI #2: 피로도 높은 부위 회피)
-    # excluded_muscles는 refine에서 현재 슬롯과 다른 부위를 선택하기 위해 제외
     high_fatigue = [m for m, f in fatigue.items() if f >= 4.0]
-    eligible = [m for m in _MUSCLES if fatigue.get(m, 0) < 4.0 and m not in excluded_muscles]
+
+    restrict = intent.get("restrict_muscles")
+    candidate_pool = restrict if restrict else _MUSCLES
+    eligible = [
+        m for m in candidate_pool
+        if fatigue.get(m, 0) < 4.0 and m not in excluded_muscles
+    ]
+
+    # 사용자 지정 부위가 모두 피로도 초과면 고피로 제외 없이 재시도
+    if not eligible and restrict:
+        eligible = [m for m in restrict if m not in excluded_muscles]
 
     if not eligible:
         return ("러닝", ["하체", "코어"], base_intensity, "전신 피로 → 유산소 권장")
@@ -172,6 +230,8 @@ def _select_workout(
     rationale = f"피로도 낮은 부위({', '.join(target)}) / 수면 {condition['avg_sleep']}h"
     if high_fatigue:
         rationale += f" / {', '.join(high_fatigue)} 회피"
+    if restrict:
+        rationale += f" / 사용자 요청: {', '.join(restrict)} 위주"
 
     return (workout_type, target, base_intensity, rationale)
 
@@ -235,6 +295,7 @@ def compose_schedule_node(state: dict) -> dict:
     calendar: list[dict] = state.get("calendar_data", [])
     health: list[dict] = state.get("health_data", [])
     workouts: list[dict] = state.get("workouts_data", [])
+    user_intent = _parse_user_intent(state.get("user_input", ""))
 
     fatigue = _compute_muscle_fatigue(workouts)
     condition = _assess_condition(health)
@@ -273,7 +334,7 @@ def compose_schedule_node(state: dict) -> dict:
         slot_end = window_start + datetime.timedelta(minutes=duration_min)
 
         workout_type, target_muscles, intensity, rationale = _select_workout(
-            running_fatigue, condition, duration_min
+            running_fatigue, condition, duration_min, user_intent=user_intent
         )
 
         slots.append(WorkoutSlot(
@@ -363,6 +424,7 @@ def refine_node(state: dict) -> dict:
     나머지 슬롯과 fatigue_timeline은 그대로 유지 (KPI #4).
     """
     user_input: str = state.get("user_input", "")
+    user_intent = _parse_user_intent(user_input)
     proposal_dict = state.get("proposal")
     if not proposal_dict:
         return {}
@@ -419,7 +481,9 @@ def refine_node(state: dict) -> dict:
         duration_min = min(_DEFAULT_DURATION_MIN, avail_min)
         slot_end = window_start + datetime.timedelta(minutes=duration_min)
         workout_type, target_muscles, intensity, rationale = _select_workout(
-            fatigue, condition, duration_min, excluded_muscles=excluded_muscles
+            fatigue, condition, duration_min,
+            excluded_muscles=excluded_muscles,
+            user_intent=user_intent,
         )
         new_slot = WorkoutSlot(
             start=window_start,

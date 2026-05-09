@@ -75,7 +75,7 @@ void main() {
       var attempts = 0;
       final client = MockClient.streaming((req, body) async {
         attempts += 1;
-        throw const SocketException_('connection refused');
+        throw const _FakeSocketException('connection refused');
       });
 
       final chat = ChatClient(
@@ -97,8 +97,8 @@ void main() {
 
 /// Lightweight stand-in so the retry loop's `catch (e)` branch sees a
 /// non-ChatTransportException network failure.
-class SocketException_ implements Exception {
-  const SocketException_(this.message);
+class _FakeSocketException implements Exception {
+  const _FakeSocketException(this.message);
   final String message;
   @override
   String toString() => 'SocketException: $message';

@@ -167,10 +167,10 @@ async def run_agent_stream(
 
     # 그래프 완료 후: LLM 텍스트 요약(토큰 단위) → proposal → done
     if final_proposal:
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             # agent/CLAUDE.md: "없으면 명확히 에러 — silent fallback 금지"
-            yield ChatChunk(type="error", payload={"message": "OPENAI_API_KEY가 설정되지 않아 텍스트 요약을 생략합니다."})
+            yield ChatChunk(type="error", payload={"message": "GOOGLE_API_KEY가 설정되지 않아 텍스트 요약을 생략합니다."})
         else:
             try:
                 async for token in generate_proposal_summary(

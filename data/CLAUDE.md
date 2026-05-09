@@ -47,6 +47,33 @@ data/
 - `muscles`는 한국어 부위명 (FE 레이더 차트 라벨과 일치)
 - `intensity`는 1~5
 
+## KPI 시나리오 씨딩 (seed_scenario.py)
+
+DB를 해당 KPI 시나리오 데이터로 초기화한 뒤 채팅 UI로 end-to-end 검증할 때 사용.
+
+```bash
+# 프로젝트 루트에서 실행
+python data/seed_scenario.py <1~5>
+
+# 예시
+python data/seed_scenario.py 1   # KPI 3: 꽉 찬 일주일
+python data/seed_scenario.py 3   # KPI 1+2: 충돌 0회 + 하체 회피
+python data/seed_scenario.py 4   # KPI 4: 멀티턴 재조정
+```
+
+**동작**: calendar_events / health_snapshots / workout_records 전체 삭제 → 시나리오 데이터 삽입.
+날짜는 실행 시점의 현재 주 월요일 기준으로 자동 조정되므로 언제 실행해도 된다.
+
+| 번호 | 파일 | KPI | 채팅 검증 방법 |
+|---|---|---|---|
+| 1 | `01_full_week.json` | KPI 3 | "이번 주 운동 추천해줘" → 모든 슬롯 10분 이하인지 확인 |
+| 2 | `02_sleep_deprived.json` | KPI 2a | "이번 주 운동 추천해줘" → 강도 ≤2인지 확인 |
+| 3 | `03_consecutive_muscle.json` | KPI 1+2b | "이번 주 운동 추천해줘" → 일정 충돌 없음 + 하체 미포함 확인 |
+| 4 | `04_multiturn.json` | KPI 4 | 1턴 추천 후 "화요일은 피곤할 것 같아" → 화요일만 변경 확인 |
+| 5 | `05_free.json` | KPI 5 | "이번 주 운동 추천해줘" → 가슴·삼두 미포함 + 레이더 확인 |
+
+> **주의**: 씨딩 후 DB에는 시나리오 데이터만 남는다. 데모용 실제 데이터가 필요하면 `seed.py`로 복원.
+
 ## scenarios/ — 데모·테스트 시나리오 (D/E)
 
 KPI 5개 + 엣지 케이스를 시나리오 단위로 묶어 보관. 데모 시연용 + 테스트용.

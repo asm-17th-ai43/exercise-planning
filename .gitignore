@@ -14,3 +14,4 @@ __pycache__/
 
 # OMC / ralph working state — per-developer
 .omc/
+run_dev.sh

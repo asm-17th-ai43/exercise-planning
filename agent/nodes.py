@@ -24,6 +24,8 @@ _REACT_STEPS = ["get_calendar", "get_health", "get_workouts"]
 # feature_spec F5: 부위 7종
 _MUSCLES = ["가슴", "등", "하체", "어깨", "코어", "이두", "삼두"]
 
+_KST = datetime.timezone(datetime.timedelta(hours=9))
+
 _WORKOUT_HOUR_START = 6   # 06:00 이후 운동 가능
 _WORKOUT_HOUR_END = 22    # 22:00 이전 운동 가능
 _MIN_SLOT_MIN = 30        # 30분 미만 창은 무시
@@ -101,8 +103,8 @@ def _busy_intervals(
         if not ev.get("is_busy", True):
             continue
         try:
-            start = datetime.datetime.fromisoformat(ev["start_at"]).replace(tzinfo=None)
-            end = datetime.datetime.fromisoformat(ev["end_at"]).replace(tzinfo=None)
+            start = datetime.datetime.fromisoformat(ev["start_at"]).astimezone(_KST).replace(tzinfo=None)
+            end = datetime.datetime.fromisoformat(ev["end_at"]).astimezone(_KST).replace(tzinfo=None)
         except (KeyError, ValueError):
             continue
         if start.date() == target_date:

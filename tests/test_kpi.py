@@ -1,9 +1,10 @@
 """KPI 시나리오 테스트 — D(박영준): KPI 1·3 / E(신승민): KPI 2·4·5.
 
-LLM·Supabase 불필요 — compose_schedule_node / refine_node 직접 호출 (순수 Python 결정론적 로직).
+compose_schedule_node / refine_node 직접 호출. OPENAI_API_KEY 필요 (없으면 skip).
 pytest -m kpi 로만 실행 (통합·데모 시점).
 """
 import json
+import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -11,6 +12,10 @@ import pytest
 
 from agent.nodes import compose_schedule_node, refine_node
 from schemas.models import ScheduleProposal
+
+_NEEDS_OPENAI = pytest.mark.skipif(
+    not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY 없으면 skip"
+)
 
 SCENARIOS_DIR = Path(__file__).parent.parent / "data" / "scenarios"
 _SCENARIO_WEEK_START = date(2026, 5, 4)  # 시나리오 JSON 기준 월요일
@@ -68,10 +73,11 @@ def _has_conflict(proposal: ScheduleProposal, calendar: list[dict]) -> list[str]
 
 
 @pytest.mark.kpi
-def test_kpi1_no_schedule_conflict():
+@pytest.mark.asyncio
+@_NEEDS_OPENAI
+async def test_kpi1_no_schedule_conflict():
     """KPI 1: 10회 생성 시 is_busy 일정과 충돌 0회.
 
-    결정론적 코드이므로 10회 반복은 동일 결과를 보장.
     03_consecutive_muscle 시나리오: 평일 09:00~18:00 busy → 자유 시간 06:00~09:00.
     """
     sc = _shift_to_current_week(_load_scenario("03_consecutive_muscle.json"))
@@ -82,14 +88,16 @@ def test_kpi1_no_schedule_conflict():
     }
 
     for i in range(10):
-        result = compose_schedule_node(state)
+        result = await compose_schedule_node(state)
         proposal = ScheduleProposal.model_validate(result["proposal"])
         conflicts = _has_conflict(proposal, sc["calendar"])
         assert not conflicts, f"[{i+1}/10] 충돌 발생:\n" + "\n".join(conflicts)
 
 
 @pytest.mark.kpi
-def test_kpi3_full_week_short_routine():
+@pytest.mark.asyncio
+@_NEEDS_OPENAI
+async def test_kpi3_full_week_short_routine():
     """KPI 3: 빈 시간 없는 주에 10분 대체 루틴 제안.
 
     01_full_week 시나리오: 매일 06:00~22:00 busy → 자유 시간 0.
@@ -102,7 +110,7 @@ def test_kpi3_full_week_short_routine():
         "workouts_data": sc["workouts"],
     }
 
-    result = compose_schedule_node(state)
+    result = await compose_schedule_node(state)
     proposal = ScheduleProposal.model_validate(result["proposal"])
 
     assert len(proposal.slots) == 7, "7일치 슬롯이 모두 있어야 함"
@@ -120,7 +128,9 @@ def test_kpi3_full_week_short_routine():
 
 
 @pytest.mark.kpi
-def test_kpi2_sleep_deprived_low_intensity():
+@pytest.mark.asyncio
+@_NEEDS_OPENAI
+async def test_kpi2_sleep_deprived_low_intensity():
     """KPI 2: 수면 부족(평균 4.1h) → 추천 강도 ≤2.
 
     02_sleep_deprived 시나리오: 최근 4일 sleep_hours 4.0~4.5h.
@@ -132,7 +142,7 @@ def test_kpi2_sleep_deprived_low_intensity():
         "health_data": sc["health"],
         "workouts_data": sc["workouts"],
     }
-    result = compose_schedule_node(state)
+    result = await compose_schedule_node(state)
     proposal = ScheduleProposal.model_validate(result["proposal"])
 
     for slot in proposal.slots:
@@ -142,7 +152,9 @@ def test_kpi2_sleep_deprived_low_intensity():
 
 
 @pytest.mark.kpi
-def test_kpi2_consecutive_muscle_avoidance():
+@pytest.mark.asyncio
+@_NEEDS_OPENAI
+async def test_kpi2_consecutive_muscle_avoidance():
     """KPI 2: 하체 3일 연속(intensity 3~4) → 하체 추천 0회.
 
     03_consecutive_muscle 시나리오: 하체 피로도 ≥4.0.
@@ -157,7 +169,7 @@ def test_kpi2_consecutive_muscle_avoidance():
         "health_data": sc["health"],
         "workouts_data": sc["workouts"],
     }
-    result = compose_schedule_node(state)
+    result = await compose_schedule_node(state)
     proposal = ScheduleProposal.model_validate(result["proposal"])
 
     for slot in proposal.slots:
@@ -168,7 +180,9 @@ def test_kpi2_consecutive_muscle_avoidance():
 
 
 @pytest.mark.kpi
-def test_kpi4_multiturn_only_target_changed():
+@pytest.mark.asyncio
+@_NEEDS_OPENAI
+async def test_kpi4_multiturn_only_target_changed():
     """KPI 4: '화요일은 피곤할 것 같아' → 화요일만 변경, 나머지 유지.
 
     04_multiturn 시나리오: compose → refine 순서.
@@ -180,7 +194,7 @@ def test_kpi4_multiturn_only_target_changed():
         "health_data": sc["health"],
         "workouts_data": sc["workouts"],
     }
-    result1 = compose_schedule_node(state1)
+    result1 = await compose_schedule_node(state1)
 
     today = date.today()
     week_start = today - timedelta(days=today.weekday())
@@ -193,7 +207,7 @@ def test_kpi4_multiturn_only_target_changed():
         "health_data": sc["health"],
         "workouts_data": sc["workouts"],
     }
-    result2 = refine_node(state2)
+    result2 = await refine_node(state2)
 
     p1 = ScheduleProposal.model_validate(result1["proposal"])
     p2 = ScheduleProposal.model_validate(result2["proposal"])
@@ -211,7 +225,9 @@ def test_kpi4_multiturn_only_target_changed():
 
 
 @pytest.mark.kpi
-def test_kpi5_fatigue_radar_consistency():
+@pytest.mark.asyncio
+@_NEEDS_OPENAI
+async def test_kpi5_fatigue_radar_consistency():
     """KPI 5: 고피로 부위(가슴·삼두) 추천 0회 + fatigue_timeline 7일·7종 부위.
 
     05_free 시나리오: 가슴·삼두 최근 고강도 운동 → 피로도 ≥4.0.
@@ -226,7 +242,7 @@ def test_kpi5_fatigue_radar_consistency():
         "health_data": sc["health"],
         "workouts_data": sc["workouts"],
     }
-    result = compose_schedule_node(state)
+    result = await compose_schedule_node(state)
     proposal = ScheduleProposal.model_validate(result["proposal"])
 
     for slot in proposal.slots:

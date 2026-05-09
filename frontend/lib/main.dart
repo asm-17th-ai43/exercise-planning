@@ -7,6 +7,7 @@ import 'api/calendar_api.dart';
 import 'api/health_api.dart';
 import 'api/workouts_api.dart';
 import 'cards/calendar_card.dart';
+import 'cards/calendar_reload_notifier.dart';
 import 'cards/fatigue_radar_card.dart';
 import 'cards/health_card.dart';
 import 'cards/workouts_card.dart';
@@ -64,6 +65,9 @@ class _DashboardPageState extends State<DashboardPage> {
   // proposals out into this notifier (see lib/chat/), and FatigueRadarCard
   // listens so the radar reflects the agent's projected timeline.
   final _proposalNotifier = ProposalNotifier();
+  // Bumped by ProposalCard after inserting events from a proposal so the
+  // calendar card refetches without a full page reload.
+  final _calendarReload = CalendarReloadNotifier();
 
   @override
   void initState() {
@@ -82,6 +86,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _proposalNotifier.dispose();
+    _calendarReload.dispose();
     super.dispose();
   }
 
@@ -128,6 +133,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       apis: _apis,
                       weekStart: _weekStart,
                       proposalNotifier: _proposalNotifier,
+                      calendarReload: _calendarReload,
                     ),
                   ],
                 ),
@@ -298,11 +304,13 @@ class _DashboardBody extends StatelessWidget {
     required this.apis,
     required this.weekStart,
     required this.proposalNotifier,
+    required this.calendarReload,
   });
 
   final _DashboardApis apis;
   final DateTime weekStart;
   final ProposalNotifier proposalNotifier;
+  final CalendarReloadNotifier calendarReload;
 
   @override
   Widget build(BuildContext context) {
@@ -316,6 +324,7 @@ class _DashboardBody extends StatelessWidget {
       apis: apis,
       weekStart: weekStart,
       proposalNotifier: proposalNotifier,
+      calendarReload: calendarReload,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -335,7 +344,11 @@ class _DashboardBody extends StatelessWidget {
                       ? constraints.maxHeight
                       : MediaQuery.of(context).size.height,
                 ),
-                child: ChatPanel(proposalNotifier: proposalNotifier),
+                child: ChatPanel(
+                  proposalNotifier: proposalNotifier,
+                  calendarApi: apis.calendar,
+                  calendarReload: calendarReload,
+                ),
               ),
             ),
           ],
@@ -350,18 +363,24 @@ class _LeftColumn extends StatelessWidget {
     required this.apis,
     required this.weekStart,
     required this.proposalNotifier,
+    required this.calendarReload,
   });
 
   final _DashboardApis apis;
   final DateTime weekStart;
   final ProposalNotifier proposalNotifier;
+  final CalendarReloadNotifier calendarReload;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CalendarCard(api: apis.calendar, weekStart: weekStart),
+        CalendarCard(
+          api: apis.calendar,
+          weekStart: weekStart,
+          reloadNotifier: calendarReload,
+        ),
         const SizedBox(height: AppSpacing.s5),
         IntrinsicHeight(
           child: Row(

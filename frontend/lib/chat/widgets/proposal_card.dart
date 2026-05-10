@@ -68,10 +68,15 @@ class _ProposalCardState extends State<ProposalCard> {
 
       final newIds = <int>[];
       for (final slot in widget.proposal.slots) {
+        // 휴식 슬롯은 targetMuscles가 비어 있어 "휴식 ()" 처럼 빈 괄호가
+        // 붙는다. 비어 있으면 type만, 있으면 "type (부위)" 로 포맷.
+        final muscles = slot.targetMuscles.join(', ');
+        final title =
+            muscles.isEmpty ? slot.type : '${slot.type} ($muscles)';
         final inserted = await api.createEvent(CalendarEvent(
           startAt: slot.start,
           endAt: slot.end,
-          title: '${slot.type} (${slot.targetMuscles.join(", ")})',
+          title: title,
         ));
         if (inserted.id != null) newIds.add(inserted.id!);
       }
@@ -265,7 +270,9 @@ class _SlotRow extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.s1),
           Text(
-            '${slot.type} · ${slot.targetMuscles.join(', ')}',
+            slot.targetMuscles.isEmpty
+                ? slot.type
+                : '${slot.type} · ${slot.targetMuscles.join(', ')}',
             style: AppTypography.body.copyWith(fontWeight: FontWeight.w600),
           ),
           if (slot.rationale.isNotEmpty) ...[

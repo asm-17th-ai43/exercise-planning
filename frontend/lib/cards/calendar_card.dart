@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -31,12 +33,16 @@ class CalendarCard extends StatefulWidget {
 }
 
 class _CalendarCardState extends State<CalendarCard> {
-  late Future<List<CalendarEvent>> _future;
+  // Last successful fetch — kept around so a refetch (proposal 등록 후 bump
+  // 또는 재시도)에서 카드가 빈 skeleton 으로 깜빡이지 않고 직전 데이터를
+  // 그대로 보여주다가 새 데이터가 도착하면 부드럽게 교체된다.
+  List<CalendarEvent>? _lastEvents;
+  Object? _lastError;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    unawaited(_trackedLoad());
     widget.reloadNotifier?.addListener(_onExternalReload);
   }
 
@@ -47,8 +53,13 @@ class _CalendarCardState extends State<CalendarCard> {
       oldWidget.reloadNotifier?.removeListener(_onExternalReload);
       widget.reloadNotifier?.addListener(_onExternalReload);
     }
-    if (oldWidget.weekStart != widget.weekStart || oldWidget.api != widget.api) {
-      _future = _load();
+    if (oldWidget.weekStart != widget.weekStart ||
+        oldWidget.api != widget.api) {
+      // Different week — drop cached events so the loading skeleton shows
+      // (the cache no longer represents the requested range).
+      _lastEvents = null;
+      _lastError = null;
+      unawaited(_trackedLoad());
     }
   }
 
@@ -58,17 +69,37 @@ class _CalendarCardState extends State<CalendarCard> {
     super.dispose();
   }
 
-  Future<List<CalendarEvent>> _load() {
+  Future<List<CalendarEvent>> _trackedLoad() async {
     final end = widget.weekStart.add(const Duration(days: 7));
-    return widget.api.getCalendar(widget.weekStart, end);
+    try {
+      final events = await widget.api.getCalendar(widget.weekStart, end);
+      if (mounted) {
+        setState(() {
+          _lastEvents = events;
+          _lastError = null;
+        });
+      }
+      return events;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _lastError = e;
+        });
+      }
+      rethrow;
+    }
   }
 
   void _onExternalReload() {
     if (!mounted) return;
-    setState(() => _future = _load());
+    unawaited(_trackedLoad());
   }
 
-  void _retry() => setState(() => _future = _load());
+  void _retry() {
+    _lastError = null;
+    unawaited(_trackedLoad());
+    setState(() {}); // clear the error UI immediately
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,26 +112,31 @@ class _CalendarCardState extends State<CalendarCard> {
         weekLabel,
         style: AppTypography.caption.copyWith(color: AppColors.textTertiary),
       ),
-      child: FutureBuilder<List<CalendarEvent>>(
-        future: _future,
-        builder: (context, snapshot) {
-          return switch (snapshot.connectionState) {
-            ConnectionState.waiting => const CardLoadingRows(iconSize: 44),
-            _ when snapshot.hasError => CardErrorState(
-                message: '일정을 불러오지 못했습니다',
-                detail: snapshot.error.toString(),
-                onRetry: _retry,
-              ),
-            _ when (snapshot.data ?? const []).isEmpty => const CardEmptyState(
-                icon: LucideIcons.calendarOff,
-                message: '이번 주 등록된 일정이 없습니다',
-                hint: 'calendar_events 시드를 INSERT 하면 표시됩니다',
-              ),
-            _ => _EventList(events: snapshot.data!),
-          };
-        },
-      ),
+      child: _buildBody(),
     );
+  }
+
+  Widget _buildBody() {
+    // Cached data wins over the in-flight future so background refetches
+    // don't drop the card back to a skeleton.
+    if (_lastEvents != null) {
+      if (_lastEvents!.isEmpty) {
+        return const CardEmptyState(
+          icon: LucideIcons.calendarOff,
+          message: '이번 주 등록된 일정이 없습니다',
+          hint: 'calendar_events 시드를 INSERT 하면 표시됩니다',
+        );
+      }
+      return _EventList(events: _lastEvents!);
+    }
+    if (_lastError != null) {
+      return CardErrorState(
+        message: '일정을 불러오지 못했습니다',
+        detail: _lastError.toString(),
+        onRetry: _retry,
+      );
+    }
+    return const CardLoadingRows(iconSize: 44);
   }
 }
 

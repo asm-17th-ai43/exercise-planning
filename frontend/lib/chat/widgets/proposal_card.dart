@@ -41,7 +41,8 @@ class _ProposalCardState extends State<ProposalCard> {
 
   Future<void> _onRegister() async {
     final api = widget.calendarApi;
-    if (api == null || _state == _RegisterState.registering ||
+    if (api == null ||
+        _state == _RegisterState.registering ||
         _state == _RegisterState.done) {
       return;
     }
@@ -201,7 +202,8 @@ class _RegisterButton extends StatelessWidget {
           const SizedBox(height: AppSpacing.s1),
           Text(
             errorMessage!,
-            style: AppTypography.caption.copyWith(color: AppColors.statusDanger),
+            style:
+                AppTypography.caption.copyWith(color: AppColors.statusDanger),
           ),
         ],
       ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -73,6 +75,10 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _weekStart = _mondayOfThisWeek(DateTime.now());
+    // Hydrate registered-event-id tracking from localStorage so a refined
+    // proposal can replace (not stack) the previous registration even after
+    // a page reload. Issue #31.
+    unawaited(_proposalNotifier.restore());
     if (Env.isConfigured) {
       _client = Supabase.instance.client;
       _apis = _DashboardApis(

@@ -10,6 +10,7 @@ import '../../design/tokens/spacing.dart';
 import '../../design/tokens/typography.dart';
 import '../../models/calendar_event.dart';
 import '../chat_message.dart';
+import '../proposal_notifier.dart';
 
 /// Renders a [ScheduleProposal] as a stack of slot cards inside the chat
 /// transcript. The "캘린더에 등록" button (F7) inserts every slot into
@@ -21,6 +22,7 @@ class ProposalCard extends StatefulWidget {
     required this.proposal,
     this.calendarApi,
     this.calendarReload,
+    this.proposalNotifier,
   });
 
   final ScheduleProposal proposal;
@@ -28,6 +30,9 @@ class ProposalCard extends StatefulWidget {
   // Supabase. When null the register button is hidden.
   final CalendarApi? calendarApi;
   final CalendarReloadNotifier? calendarReload;
+  // Tracks ids of rows we created so a refined re-registration replaces
+  // (not stacks) the previous one.
+  final ProposalNotifier? proposalNotifier;
 
   @override
   State<ProposalCard> createState() => _ProposalCardState();
@@ -52,13 +57,25 @@ class _ProposalCardState extends State<ProposalCard> {
     });
 
     try {
+      // Replace semantics — drop any rows we registered earlier in this
+      // session so refining ("화요일은 바쁠 것 같아") doesn't stack a second
+      // copy. Only ids we created ourselves are touched (tracked in
+      // ProposalNotifier) — seed data + user-authored events stay put.
+      final priorIds = widget.proposalNotifier?.registeredEventIds ?? const [];
+      if (priorIds.isNotEmpty) {
+        await api.deleteEventsByIds(priorIds);
+      }
+
+      final newIds = <int>[];
       for (final slot in widget.proposal.slots) {
-        await api.createEvent(CalendarEvent(
+        final inserted = await api.createEvent(CalendarEvent(
           startAt: slot.start,
           endAt: slot.end,
           title: '${slot.type} (${slot.targetMuscles.join(", ")})',
         ));
+        if (inserted.id != null) newIds.add(inserted.id!);
       }
+      await widget.proposalNotifier?.recordRegisteredIds(newIds);
       widget.calendarReload?.bump();
       if (!mounted) return;
       setState(() => _state = _RegisterState.done);

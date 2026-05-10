@@ -157,16 +157,20 @@ class _EventList extends StatelessWidget {
     final dayLabel = DateFormat('E', 'ko_KR');
     final timeLabel = DateFormat('HH:mm');
 
+    // Mon→Sun (ascending chronological). Defensive client-side sort so the
+    // UI does not depend on whichever order the backend echoes back.
+    final sorted = [...events]..sort((a, b) => a.startAt.compareTo(b.startAt));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < events.length; i++) ...[
+        for (var i = 0; i < sorted.length; i++) ...[
           if (i != 0) const Divider(height: 1, color: AppColors.divider),
           _EventRow(
-            event: events[i],
-            isToday: _isSameDate(events[i].startAt, today),
-            dayLabel: dayLabel.format(events[i].startAt),
-            timeLabel: timeLabel.format(events[i].startAt),
+            event: sorted[i],
+            isToday: _isSameDate(sorted[i].startAt, today),
+            dayLabel: dayLabel.format(sorted[i].startAt),
+            timeLabel: timeLabel.format(sorted[i].startAt),
           ),
         ],
       ],

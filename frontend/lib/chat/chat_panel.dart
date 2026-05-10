@@ -97,6 +97,7 @@ class _ChatPanelState extends State<ChatPanel> {
                     scrollController: _scrollController,
                     calendarApi: widget.calendarApi,
                     calendarReload: widget.calendarReload,
+                    proposalNotifier: widget.proposalNotifier,
                   ),
           ),
           const SizedBox(height: AppSpacing.s3),
@@ -159,8 +160,9 @@ class _ResetButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    final color =
-        enabled ? AppColors.textTertiary : AppColors.textTertiary.withValues(alpha: 0.4);
+    final color = enabled
+        ? AppColors.textTertiary
+        : AppColors.textTertiary.withValues(alpha: 0.4);
 
     return Tooltip(
       message: '새 대화 시작',
@@ -186,12 +188,14 @@ class _MessageList extends StatelessWidget {
     required this.scrollController,
     this.calendarApi,
     this.calendarReload,
+    this.proposalNotifier,
   });
 
   final List<ChatMessage> messages;
   final ScrollController scrollController;
   final CalendarApi? calendarApi;
   final CalendarReloadNotifier? calendarReload;
+  final ProposalNotifier? proposalNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -208,6 +212,7 @@ class _MessageList extends StatelessWidget {
         message: messages[i],
         calendarApi: calendarApi,
         calendarReload: calendarReload,
+        proposalNotifier: proposalNotifier,
       ),
     );
   }

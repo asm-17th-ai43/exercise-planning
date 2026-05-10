@@ -8,6 +8,7 @@ import '../../design/tokens/radius.dart';
 import '../../design/tokens/spacing.dart';
 import '../../design/tokens/typography.dart';
 import '../chat_message.dart';
+import '../proposal_notifier.dart';
 import 'proposal_card.dart';
 
 class MessageBubble extends StatefulWidget {
@@ -16,13 +17,15 @@ class MessageBubble extends StatefulWidget {
     required this.message,
     this.calendarApi,
     this.calendarReload,
+    this.proposalNotifier,
   });
 
   final ChatMessage message;
   // Forwarded to ProposalCard so the "캘린더에 등록" button can call Supabase
-  // and bump the calendar card. Both nullable for unit tests.
+  // and bump the calendar card. All nullable for unit tests.
   final CalendarApi? calendarApi;
   final CalendarReloadNotifier? calendarReload;
+  final ProposalNotifier? proposalNotifier;
 
   @override
   State<MessageBubble> createState() => _MessageBubbleState();
@@ -90,6 +93,7 @@ class _MessageBubbleState extends State<MessageBubble>
               proposal: message.proposal!,
               calendarApi: widget.calendarApi,
               calendarReload: widget.calendarReload,
+              proposalNotifier: widget.proposalNotifier,
             ),
           ),
       ],
@@ -156,7 +160,8 @@ class _BubbleBody extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(LucideIcons.alertCircle, size: 14, color: AppColors.statusDanger),
+          Icon(LucideIcons.alertCircle,
+              size: 14, color: AppColors.statusDanger),
           const SizedBox(width: AppSpacing.s2),
           Flexible(
             child: Text(

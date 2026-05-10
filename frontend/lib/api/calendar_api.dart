@@ -13,7 +13,7 @@ class CalendarApi {
         .select()
         .gte('start_at', start.toIso8601String())
         .lte('end_at', end.toIso8601String())
-        .order('start_at');
+        .order('start_at', ascending: true);
 
     return rows
         .cast<Map<String, dynamic>>()
@@ -31,5 +31,16 @@ class CalendarApi {
         .select()
         .single();
     return CalendarEvent.fromJson(row);
+  }
+
+  /// Delete a specific set of `calendar_events` rows by id. Used by
+  /// ProposalCard before re-registering a refined proposal so the previous
+  /// session's slots are replaced (not stacked).
+  ///
+  /// Caller passes only ids it created itself — seed data and user-authored
+  /// events are never touched.
+  Future<void> deleteEventsByIds(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await _client.from('calendar_events').delete().inFilter('id', ids);
   }
 }

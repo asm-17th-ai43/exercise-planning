@@ -27,9 +27,15 @@ class CalendarEvent {
   }
 
   /// Insert payload — drops `id` so Postgres assigns it.
+  ///
+  /// Agent emits `start`/`end` as KST naive ISO strings ("2026-05-04T18:00:00")
+  /// which Dart parses as local-time DateTime. Sending those strings raw makes
+  /// Postgres interpret them as UTC and shift everything 9 hours forward,
+  /// landing on the wrong calendar day. Convert to UTC explicitly so the
+  /// stored value round-trips back to the same KST wall-clock time.
   Map<String, dynamic> toInsertJson() => {
-        'start_at': startAt.toIso8601String(),
-        'end_at': endAt.toIso8601String(),
+        'start_at': startAt.toUtc().toIso8601String(),
+        'end_at': endAt.toUtc().toIso8601String(),
         'title': title,
         'is_busy': isBusy,
       };
